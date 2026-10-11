@@ -1,0 +1,45 @@
+# --- project data and run artifacts (never committed) ---
+data/
+runs/
+
+# --- model artifacts (release artifacts are handled separately) ---
+*.nrm
+
+# --- secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.key
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- .NET ---
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+TestResults/
+artifacts/
+.vs/
+
+# --- editors / OS ---
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store

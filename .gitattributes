@@ -1,0 +1,29 @@
+* text=auto eol=lf
+
+*.sln        text eol=crlf
+*.slnx       text eol=crlf
+*.csproj     text eol=crlf
+*.props      text eol=crlf
+*.targets    text eol=crlf
+*.cs         text diff=csharp
+*.py         text diff=python
+*.md         text
+*.json       text
+*.toml       text
+*.yml        text
+*.yaml       text
+*.jsonl      text
+
+*.ps1        text eol=crlf
+*.cmd        text eol=crlf
+*.sh         text eol=lf
+
+*.png        binary
+*.jpg        binary
+*.gz         binary
+*.zip        binary
+*.onnx       binary
+*.nrm        binary
+
+uv.lock      linguist-generated=true -diff
+LICENSE      linguist-vendored=true

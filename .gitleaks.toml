@@ -1,0 +1,30 @@
+# gitleaks configuration for nebuRedaction.
+#
+# The default rule set is used as-is: this project's whole purpose is detecting
+# credentials, so weakening the scanner that guards the repository would be
+# self-defeating. Only the allowlist below is project-specific.
+
+title = "nebuRedaction"
+
+[extend]
+# Pull in every rule shipped with the gitleaks release in .pre-commit-config.yaml.
+useDefault = true
+
+[allowlist]
+description = """
+Synthetic test fixtures.
+
+Fixtures under tests/fixtures/synthetic/ are format-correct but randomly
+generated values produced by datagen/ — the project cannot test a credential
+detector without credential-shaped strings, so gitleaks is not run over them.
+
+IMPORTANT: this path is NOT unchecked. Everything under it must pass the
+synthetic-sample manifest check (implemented in NR-0001 §2.3), which verifies
+that each credential-shaped fixture is a registered, generator-produced sample
+with a recorded seed. That check runs in pre-commit and in CI, and it is the
+control that actually keeps real credentials out of this path. Do not add any
+further allowlisted path without an equivalent check behind it.
+"""
+paths = [
+    '''(^|/)tests/fixtures/synthetic/''',
+]

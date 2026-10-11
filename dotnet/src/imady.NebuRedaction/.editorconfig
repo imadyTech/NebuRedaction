@@ -1,0 +1,13 @@
+# Project-level analyzer exemption for work order NR-0000 §2.5 / plan §12.1 item 10.
+#
+# The root namespace is `imady.NebuRedaction` with a deliberately lower-case first
+# letter, so that it matches the NuGet package id and so that the leading capital
+# `I` is not misread as a lower-case `L`. That deviates from the .NET PascalCase
+# convention, so exactly one rule is exempted here and nowhere else:
+#
+#   IDE1006 — Naming rule violation (namespace does not match PascalCase style).
+#
+# No other rule is suppressed, and `NoWarn` / `#pragma` are not used anywhere in
+# this repository (EXECUTION.md §3).
+[*.cs]
+dotnet_diagnostic.IDE1006.severity = none

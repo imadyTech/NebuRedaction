@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net10.0;netstandard2.1</TargetFrameworks>
+    <RootNamespace>imady.NebuRedaction</RootNamespace>
+    <AssemblyName>imady.NebuRedaction</AssemblyName>
+    <PackageId>imady.NebuRedaction</PackageId>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>true</IsPackable>
+    <Description>Offline secret-credential classifier for structured log attributes. Pre-release, under construction.</Description>
+    <PackageTags>logging;redaction;secrets;credentials;privacy;machine-learning</PackageTags>
+  </PropertyGroup>
+
+</Project>
