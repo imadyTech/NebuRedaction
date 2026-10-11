@@ -268,6 +268,22 @@ wheels = [
 ]
 
 [[package]]
+name = "laya"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/a0/8dfa9423557d2b4d439b3571f2f99a029e6d7cf7a87155df264713e1286f/laya-0.4.2.tar.gz", hash = "sha256:aff6f51438ec1df41c97191fb13a4cbb423febe6f4fb27cbc131aeabaa04176a", size = 1090157, upload-time = "2026-10-10T09:25:33.812Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/d1/8d1d18b6645c729612a2e3008cba79b6b1fa1420b6a5df026650df2a7321/laya-0.4.2-py3-none-any.whl", hash = "sha256:126284550840e8fc2445f9cd4c808e505d25d457242e7de5658b2cb9f9155b26", size = 380522, upload-time = "2026-10-10T09:25:31.902Z" },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -339,6 +355,7 @@ dev = [
 teacher = [
     { name = "accelerate" },
     { name = "huggingface-hub" },
+    { name = "laya" },
     { name = "psutil" },
     { name = "safetensors" },
     { name = "sentencepiece" },
@@ -359,6 +376,7 @@ dev = [
 teacher = [
     { name = "accelerate", specifier = ">=1.11.0" },
     { name = "huggingface-hub", specifier = ">=0.36.0" },
+    { name = "laya", specifier = ">=0.4.2" },
     { name = "psutil", specifier = ">=7.1.0" },
     { name = "safetensors", specifier = ">=0.6.0" },
     { name = "sentencepiece", specifier = ">=0.2.1" },
