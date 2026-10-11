@@ -47,7 +47,9 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        # Pinned to an exact release: astral-sh/setup-uv publishes no floating
+        # v10 major tag, so `@v10` fails to resolve at job setup.
+        uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
 
