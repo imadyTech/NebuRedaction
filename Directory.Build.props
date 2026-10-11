@@ -18,7 +18,7 @@
     <Company>imadyTech</Company>
     <Product>nebuRedaction</Product>
     <Copyright>Copyright 2026 imadyTech</Copyright>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/imadyTech/NebuRedaction</PackageProjectUrl>
     <RepositoryUrl>https://github.com/imadyTech/NebuRedaction</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

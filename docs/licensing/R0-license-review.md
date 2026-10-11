@@ -11,6 +11,17 @@ All URLs were checked on **2026-10-11**.
 
 **This file is an engineering record. It is not legal advice.**
 
+> **Decision update, 2026-10-12 (Frank).** LogHub and SDLog's data are removed
+> from *evaluation* and are instead used for **internal training only, with no
+> redistribution**. This reverses plan §5.1's arrangement for those two sources
+> and supersedes the recommendation recorded in entries #2 and #3 below. The
+> finding that produced that recommendation still stands and is kept here
+> unchanged, together with what the new arrangement implies — see
+> "Consequences of the 2026-10-12 decision". Plan §5.1, EXECUTION.md §8 and
+> NR-0001 still describe the old rule and need to be updated by the
+> orchestrating process; until they are, the written rules and the actual
+> arrangement disagree.
+
 ---
 
 ## Summary
@@ -18,8 +29,8 @@ All URLs were checked on **2026-10-11**.
 | # | Source | License as found | Our use | Attribution duty | Verdict |
 |---|---|---|---|---|---|
 | 1 | CredData (Samsung) | Repo Apache-2.0; each data file under its originating project's license | Local evaluation only | Cite CredData; per-file notices only matter if redistributed, and we do not redistribute | Usable as planned |
-| 2 | SDLog annotated data (mooselab) | Repo MIT; data directory carries no separate statement; data is LogHub-derived | Local evaluation only | Cite SDLog and LogHub | **Inherits the LogHub question — see #3** |
-| 3 | LogHub (logpai) | No SPDX license; terms of use state research/academic availability | Local evaluation only | Cite the LogHub paper and link the repository | **Recommend removing from evaluation** — Frank's decision |
+| 2 | SDLog annotated data (mooselab) | Repo MIT; data directory carries no separate statement; data is LogHub-derived | **Internal training only; not redistributed** (Frank, 2026-10-12) | Cite SDLog and LogHub | Decided; carries the LogHub risk — see #3 |
+| 3 | LogHub (logpai) | No SPDX license; terms of use state research/academic availability | **Internal training only; not redistributed** (Frank, 2026-10-12) | Cite the LogHub paper and link the repository | Decided by Frank against this review's recommendation; residual risk recorded below |
 | 4 | Laya weights (convaiinnovations/laya) | Apache-2.0 | Teacher labeling of synthetic and own samples | Keep the Apache-2.0 notice; name Laya in the model card | Usable as planned |
 | 5 | CredSweeper (Samsung) | MIT | Run as an evaluation control group | Reproduce the MIT notice if any of its code is vendored | Usable as planned |
 | 6 | gitleaks rules | MIT | Rule porting (patterns as reference) | Reproduce the MIT notice and attribute ported rules | Usable as planned |
@@ -63,13 +74,14 @@ All URLs were checked on **2026-10-11**.
   `OpenStack_2k.log_structured.txt` and so on — so the underlying logs are
   LogHub's, and the repository's MIT grant plausibly covers the *annotations*
   and the code rather than the logs themselves.
-- **Our use**: **local evaluation only**, as a source of log structure and of
-  non-secret sensitive attributes (negatives). Never trained on, never
-  committed, never redistributed.
+- **Our use (decided 2026-10-12)**: **internal training only, not
+  redistributed** — a source of log structure and of non-secret sensitive
+  attributes (negatives). Removed from the evaluation set. Never committed to
+  this repository, never redistributed as data.
 - **Attribution duty**: cite SDLog, and cite LogHub for the underlying logs.
-- **Verdict**: **inherits the LogHub question.** Treating SDLog data on the
-  same footing as LogHub is what plan §5.1 already prescribes; whatever is
-  decided for #3 applies here too.
+- **Verdict**: decided by Frank, on the same footing as #3. The data is
+  LogHub's, so the residual risk is LogHub's residual risk; see
+  "Consequences of the 2026-10-12 decision".
 
 ## 3. LogHub (logpai)
 
@@ -80,9 +92,10 @@ All URLs were checked on **2026-10-11**.
   available for research or academic work." It additionally asks that any usage
   or distribution refer to the repository URL and cite the LogHub paper, and
   notes the logs are deliberately *not* sanitized or anonymized.
-- **Our use as planned**: **local evaluation only** — real log templates and
-  value distributions as an external test set. Never trained on, never
-  committed, never redistributed.
+- **Our use (decided 2026-10-12)**: **internal training only, not
+  redistributed** — real log templates and value distributions as training
+  material. Removed from the evaluation set. Never committed to this
+  repository, never redistributed as data.
 - **Attribution duty**: cite the LogHub paper (Zhu, He, He, Liu, Lyu, *Loghub:
   A Large Collection of System Log Datasets for AI-driven Log Analytics*,
   ISSRE 2023) and link the repository.
@@ -95,13 +108,47 @@ All URLs were checked on **2026-10-11**.
   does not change what the data is being used for. A second consideration
   points the same way: LogHub states the logs are not sanitized, so they may
   contain real values that this project has no need to hold.
-- **Verdict**: **recommend removing from evaluation** unless Frank is content
-  with the "research or academic work" reading, or obtains written permission
-  from the LogHub maintainers. Listed as a pending decision; this review does
-  not decide it. If LogHub is removed, SDLog's data (#2) goes with it, and the
-  external test set shrinks to CredData plus NebuLog's own logs — which weakens
-  but does not invalidate G2, since CredData remains fully independent of the
-  training distribution.
+- **This review's recommendation (2026-10-11)** was to remove LogHub from the
+  evaluation unless the "research or academic work" reading was accepted or
+  written permission was obtained from the maintainers.
+- **Decision (2026-10-12, Frank)**: LogHub is removed from the evaluation and
+  used for **internal training only, with no redistribution**. Recorded as
+  decided; the finding above is unchanged and the consequences are set out
+  below.
+
+## Consequences of the 2026-10-12 decision
+
+Recorded so that later work orders inherit the reasoning rather than
+rediscovering it. These are engineering consequences, not legal conclusions.
+
+1. **Publishing a model trained on this data is the open question.** The
+   arrangement holds together as long as "not redistributed" covers the model
+   too. Plan §8.2 and §8.3 publish the default model weights to Hugging Face
+   and embed them in the NuGet package, and whether published weights count as
+   a redistribution of their training data is contested rather than settled. If
+   the released default model is trained on LogHub- or SDLog-derived data, that
+   question stops being theoretical. Two arrangements avoid it: keep the
+   released model on synthetic and own data and use the third-party material
+   only for models that stay internal, or obtain written permission from the
+   LogHub maintainers. **Needs a decision before NR-0006 (release).**
+2. **The independent external test set shrinks to CredData plus NebuLog's own
+   logs.** Data used for training cannot also measure generalisation to unseen
+   distributions, so G2's external evidence now rests on CredData alone among
+   third-party sources. CredData remains fully independent, so G2 stays
+   meaningful, but it is thinner than plan §5.1 item 4 assumed and the
+   evaluation report should say so plainly.
+3. **The repository's written rules now disagree with the arrangement.** Plan
+   §5.1, EXECUTION.md §8 ("用第三方数据训练…" is listed as prohibited) and
+   NR-0001 all still state that third-party data must never enter training, and
+   NR-0001 is specified to add a test that fails if a training script reads
+   `data/third_party/`. Those three documents need updating by the
+   orchestrating process; until then an executor following the written rules
+   will contradict this decision.
+4. **Unsanitized logs now enter training.** LogHub states its logs are
+   deliberately not sanitized. Material that reaches the training set deserves
+   the stronger handling: the data stays under `data/third_party/`, out of git,
+   and NR-0001's second-obfuscation check should run over it before it is used,
+   not only over anything destined for the repository.
 
 ## 4. Laya model weights (convaiinnovations/laya)
 
@@ -181,12 +228,12 @@ All URLs were checked on **2026-10-11**.
 
 ## Pending decisions
 
-1. **LogHub (and, following it, SDLog's data).** The "research or academic
-   work" grant may not cover this project's evaluation use. Options: accept the
-   reading and proceed; seek written permission from the LogHub maintainers; or
-   drop both sources from the evaluation and rely on CredData plus NebuLog's
-   own logs as the external test set. **Frank's decision** — see work order
-   NR-0000 §7.
+1. ~~**LogHub (and, following it, SDLog's data)** — use in evaluation.~~
+   **Resolved 2026-10-12 (Frank)**: removed from evaluation, used for internal
+   training only, not redistributed.
+2. **Whether a publicly released model may be trained on LogHub- or
+   SDLog-derived data.** Open; see "Consequences of the 2026-10-12 decision"
+   item 1. Needs a decision before NR-0006.
 
 ## Re-verification
 

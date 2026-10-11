@@ -4,13 +4,14 @@ version = "0.1.0"
 description = "Python reference implementation of the nebuRedaction secret-credential classifier. Pre-release, under construction."
 readme = "README.md"
 requires-python = ">=3.12"
-license = "Apache-2.0"
+license = "MIT"
 authors = [{ name = "imadyTech" }]
 keywords = ["logging", "redaction", "secrets", "credentials", "privacy"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
     "Topic :: Security",
     "Topic :: System :: Logging",
 ]

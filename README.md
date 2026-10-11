@@ -33,7 +33,7 @@ weights and the synthetic training corpus.
 | Path | Contents |
 |---|---|
 | `datagen/` | Synthetic data generator |
-| `corpus/` | Acquisition scripts for third-party evaluation data (no data) |
+| `corpus/` | Acquisition scripts for third-party datasets (no data) |
 | `labeling/` | Rule, teacher and human-spot-check labeling tools |
 | `training/` | Training pipelines (ML.NET, PyTorch CPU) |
 | `eval/` | Evaluation framework and baseline adapters |
@@ -46,10 +46,12 @@ weights and the synthetic training corpus.
 
 No dataset, model weight, credential or `.env` file is ever committed. Test
 fixtures may only contain synthetic samples, and those are registered in a
-synthetic-sample manifest that CI verifies. Third-party datasets are used for
-local evaluation only: they never enter the training set and are never
-redistributed.
+synthetic-sample manifest that CI verifies.
+
+Third-party datasets stay local and are never redistributed. How each one may
+be used differs per source and is recorded, with the licence wording it follows
+from, in [docs/licensing/R0-license-review.md](docs/licensing/R0-license-review.md).
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
