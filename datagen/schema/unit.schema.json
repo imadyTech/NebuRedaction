@@ -2,9 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/imadyTech/NebuRedaction/datagen/schema/unit.schema.json",
   "title": "nebuRedaction detection unit",
-  "description": "One attribute of one log record, with the context needed to classify it. Work order NR-0001 §2.1; plan §7.3. One JSON object per line in a JSON Lines file.",
+  "description": "One attribute of one log record, with the context needed to classify it. Work order NR-0001 §2.1; plan §7.3. One JSON object per line in a JSON Lines file. FROZEN AT v1.0 by NR-0002 §2.3 item 1 (gate G1): any change to this schema must raise the version and be declared in the evaluation report, per EXECUTION.md §8.",
   "type": "object",
-  "required": ["id", "key", "value", "source"],
+  "required": [
+    "id",
+    "key",
+    "value",
+    "source"
+  ],
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -74,12 +79,20 @@
         "context": {
           "description": "How the key name relates to the value: whether it points at the right answer, says nothing, or points the wrong way.",
           "type": "string",
-          "enum": ["hinting", "neutral", "misleading"]
+          "enum": [
+            "hinting",
+            "neutral",
+            "misleading"
+          ]
         },
         "split": {
           "description": "The split this unit was generated for.",
           "type": "string",
-          "enum": ["train", "val", "test"]
+          "enum": [
+            "train",
+            "val",
+            "test"
+          ]
         },
         "held_out_family": {
           "description": "True when the unit's family is one of the families held out of training to test generalisation to unseen formats.",
@@ -100,5 +113,6 @@
       },
       "additionalProperties": true
     }
-  }
+  },
+  "version": "1.0"
 }

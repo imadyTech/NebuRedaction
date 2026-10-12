@@ -413,8 +413,13 @@ def convert(
                     # the whole line, which is what a logger would have emitted.
                     value = line.strip()
                     prefix = ""
-                    stats.key_recovered["multiline_fallback"] += 1
-                    key, how = "<slot:value>", "defaulted"
+                    # Record the distinct reason on the unit, not just in the
+                    # statistics: NR-0002 §2.3A item 2 slices the evaluation by
+                    # key_recovery, and "the whole line was used because there
+                    # was no usable value span" is a different input shape from
+                    # "a key name could not be recovered from the prefix".
+                    key, how = "<slot:value>", "multiline_fallback"
+                    stats.key_recovered[how] += 1
                 else:
                     value = line[value_start:value_end]
                     prefix = line[:value_start]
