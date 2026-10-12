@@ -135,4 +135,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v3
         env:
           GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          # Upload the report. Without it a failure says only "leaks detected,
+          # see job summary" and there is nothing to act on from the outside —
+          # which cost a debugging round the first time this job failed.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"

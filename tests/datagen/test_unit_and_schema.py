@@ -20,7 +20,9 @@ def _unit(**overrides) -> dict:
     record = {
         "id": "t-1",
         "key": "ApiKey",
-        "value": "AKIAEXAMPLEEXAMPLE12",
+        # Deliberately not vendor-shaped: a literal matching a real key format
+        # is itself a secret-scanner finding, whatever it actually is.
+        "value": "placeholder-value-not-a-credential",
         "source": "synth",
         "label": "api_key",
     }
