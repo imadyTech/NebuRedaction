@@ -1,0 +1,34 @@
+{
+  "lock_version": 1,
+  "schema_version": "1.0",
+  "note": "Pins the evaluation sets. EXECUTION.md §8 forbids changing a test set or a metric definition after G1 without declaring it in the report; this file is what such a declaration is checked against. Own-log data is deliberately absent: it is unlabelled until NR-0003 (NR-0002 §2.3A item 4).",
+  "testsets": [
+    {
+      "name": "synth_val",
+      "path": "data/synth/v0/val.jsonl",
+      "role": "selection",
+      "robustness_slices": false,
+      "sha256": "1ac156bc8666fe621d8c8603e08730bbf0288b2a1c8c372b8a5b4fef27a671f9",
+      "units": 20000,
+      "description": "Synthetic validation split. Operating points are chosen here and nowhere else."
+    },
+    {
+      "name": "synth_test",
+      "path": "data/synth/v0/test.jsonl",
+      "role": "test",
+      "robustness_slices": true,
+      "sha256": "492def8dff0710fd2c64cd1f50559a0b1897a7047908385832a860ed0a7d0583",
+      "units": 20000,
+      "description": "Synthetic test split, including the ten held-out format families."
+    },
+    {
+      "name": "creddata",
+      "path": "data/third_party/eval_v0.jsonl",
+      "role": "test",
+      "robustness_slices": false,
+      "sha256": "5b05cab5fc4400c8bc3fb6150654403cccfb19e25f94e124d4126ed2b00b9c12",
+      "units": 49568,
+      "description": "CredData, converted to detection units. Independent of the training distribution; evaluation only. 18.2% of CredData's labelled rows could not be acquired on this platform (NR-0001 §9.5), and it contains no cookie-class units."
+    }
+  ]
+}

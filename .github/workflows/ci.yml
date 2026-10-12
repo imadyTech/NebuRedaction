@@ -54,7 +54,7 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --group dev --group datagen --locked
+        run: uv sync --group dev --group datagen --group eval --locked
 
       - name: Lint
         run: uv run ruff check .
@@ -108,7 +108,7 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --group dev --group datagen --locked
+        run: uv sync --group dev --group datagen --group eval --locked
 
       # Exercises tools/check_synthetic_manifest.py end to end, in both
       # directions: a generated corpus passes against its own manifest, and a

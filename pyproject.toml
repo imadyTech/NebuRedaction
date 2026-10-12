@@ -15,6 +15,9 @@ dev = [
     "pytest>=8.4.0",
     "neburedaction",
 ]
+eval = [
+    "credsweeper>=1.19.2",
+]
 teacher = [
     "transformers>=4.57.0",
     "accelerate>=1.11.0",
