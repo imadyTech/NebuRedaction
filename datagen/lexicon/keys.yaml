@@ -1,0 +1,284 @@
+# Key-name vocabulary for the synthetic generator (NR-0001 §2.2 item 4).
+#
+# PROVENANCE. Every name below comes from one of three permitted sources:
+#   1. vendor documentation for the credential format concerned;
+#   2. configuration conventions of widely used frameworks (ASP.NET Core
+#      configuration, Spring Boot, Django settings, twelve-factor environment
+#      variables, OpenTelemetry semantic conventions);
+#   3. NebuLog's own demo-service logs.
+#
+# No name here was derived by counting key names in LogHub, CredData or SDLog.
+# Plan §5.2 originally said to take the key-name distribution from open log
+# templates; that contradicts plan §5.1, and §5.1 wins (see NR-0001 §2.2 item 4).
+# LogHub and SDLog are not used at all in v0.1.
+#
+# THE THREE GROUPS.
+#   sensitive  — the name points at a secret. A value under one of these is
+#                probably a credential.
+#   neutral    — the name says nothing either way.
+#   misleading — the name contains a credential-suggesting word while the value
+#                is not a credential. These are the trap, and they are what the
+#                adversarial negatives are built from: NR-0000's Laya probe
+#                found the teacher model classifying the user name in
+#                "Failed password for invalid user <name>" as a password with
+#                probability 0.972, purely because the word "password" was in
+#                the template. A detector that keys on the word rather than the
+#                value fails here, loudly.
+#
+# Each entry is a key name as it would appear in a log attribute. Casing is
+# significant: real logs mix PascalCase (.NET), snake_case (Python),
+# SCREAMING_SNAKE (environment variables) and kebab-case (HTTP headers), and the
+# model's key-name tokeniser has to cope with all four (plan §4.2).
+
+version: 1
+
+# Names whose presence is evidence of a secret, grouped by the class they
+# suggest. The generator prefers a key from the matching class when it wants a
+# "hinting" context, and from another class when it wants a weaker signal.
+sensitive:
+  api_key:
+    - ApiKey
+    - API_KEY
+    - api_key
+    - apiKey
+    - ClientSecret
+    - CLIENT_SECRET
+    - client_secret
+    - SecretKey
+    - SECRET_KEY
+    - secretKey
+    - AccessKeyId
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - SecretAccessKey
+    - AccountKey
+    - SubscriptionKey
+    - Ocp-Apim-Subscription-Key
+    - X-Api-Key
+    - x-api-key
+    - SENDGRID_API_KEY
+    - STRIPE_SECRET_KEY
+    - GITHUB_TOKEN
+    - GH_TOKEN
+    - GITLAB_TOKEN
+    - NPM_TOKEN
+    - NUGET_API_KEY
+    - DATADOG_API_KEY
+    - TWILIO_AUTH_TOKEN
+    - DIGITALOCEAN_TOKEN
+    - VAULT_TOKEN
+    - OPENAI_API_KEY
+    - ANTHROPIC_API_KEY
+    - GOOGLE_API_KEY
+    - Credentials:ApiKey
+    - Integrations:Stripe:SecretKey
+  token:
+    - Authorization
+    - authorization
+    - AccessToken
+    - ACCESS_TOKEN
+    - access_token
+    - accessToken
+    - RefreshToken
+    - REFRESH_TOKEN
+    - refresh_token
+    - IdToken
+    - id_token
+    - BearerToken
+    - bearer_token
+    - SessionToken
+    - session_token
+    - AuthToken
+    - auth_token
+    - JwtToken
+    - jwt
+    - X-Auth-Token
+    - X-Amz-Security-Token
+    - Proxy-Authorization
+  password:
+    - Password
+    - PASSWORD
+    - password
+    - passwd
+    - pwd
+    - Pwd
+    - UserPassword
+    - DbPassword
+    - DB_PASSWORD
+    - POSTGRES_PASSWORD
+    - MYSQL_ROOT_PASSWORD
+    - REDIS_PASSWORD
+    - RABBITMQ_DEFAULT_PASS
+    - GRAPHITE_PASS
+    - SMTP_PASSWORD
+    - Passphrase
+    - passphrase
+    - KeystorePassword
+    - spring.datasource.password
+  private_key:
+    - PrivateKey
+    - PRIVATE_KEY
+    - private_key
+    - privateKey
+    - SigningKey
+    - SIGNING_KEY
+    - TLS_KEY
+    - SSH_PRIVATE_KEY
+    - GOOGLE_PRIVATE_KEY
+    - JWT_PRIVATE_KEY
+    - CertificateKey
+    - pem
+  connection_string:
+    - ConnectionString
+    - CONNECTION_STRING
+    - connection_string
+    - DATABASE_URL
+    - DatabaseUrl
+    - ConnectionStrings:Default
+    - ConnectionStrings:Orders
+    - REDIS_URL
+    - MONGODB_URI
+    - AMQP_URL
+    - CELERY_BROKER_URL
+    - AZURE_STORAGE_CONNECTION_STRING
+    - spring.datasource.url
+    - SQLALCHEMY_DATABASE_URI
+  cookie:
+    - Cookie
+    - cookie
+    - Set-Cookie
+    - SessionCookie
+    - AuthCookie
+    - .AspNet.ApplicationCookie
+    - JSESSIONID
+    - PHPSESSID
+    - laravel_session
+    - connect.sid
+    - csrftoken
+    - XSRF-TOKEN
+
+# Names that carry no signal. A secret under one of these is the case where the
+# value has to speak for itself; a negative under one of these is the ordinary
+# case that dominates real logs.
+neutral:
+  - Value
+  - value
+  - Data
+  - data
+  - Payload
+  - payload
+  - Field
+  - Item
+  - Input
+  - Content
+  - Result
+  - Parameter
+  - param
+  - Attribute
+  - Property
+  - Setting
+  - Config
+  - Options
+  - Detail
+  - Extra
+  - Context
+  - State
+  - Entry
+  - Record
+  - Message
+  - Note
+  - Tag
+  - Label
+  - Reference
+  - Handle
+  - Identifier
+  - Id
+  - id
+  - Code
+  - Text
+  - Line
+  - Arg0
+  - args
+  - QueryString
+  - RequestBody
+  - ResponseBody
+  - Header
+  - headers
+  - env
+  - metadata
+
+# The trap. Each name contains a credential-suggesting word while the value under
+# it is not a credential. Used to build the adversarial negatives, which must be
+# at least 10% of the negatives in every split (NR-0001 §2.2 item 4).
+misleading:
+  - tokenCount
+  - TokenCount
+  - token_count
+  - maxTokens
+  - PromptTokens
+  - CompletionTokens
+  - tokenizer
+  - TokenizerVersion
+  - secretary
+  - SecretaryName
+  - secretName
+  - SecretRef
+  - SecretVersion
+  - SecretCount
+  - passwordPolicy
+  - PasswordPolicy
+  - PasswordMinLength
+  - PasswordExpiryDays
+  - PasswordLastChanged
+  - passwordResetUrl
+  - PasswordStrength
+  - RequiresPassword
+  - HasPassword
+  - keyCount
+  - KeyCount
+  - KeyName
+  - KeyVaultName
+  - PartitionKey
+  - RowKey
+  - SortKey
+  - IdempotencyKey
+  - CacheKey
+  - RoutingKey
+  - PublicKey
+  - PublicKeyFingerprint
+  - KeyId
+  - KeyRotatedAt
+  - hash
+  - Hash
+  - ContentHash
+  - FileHash
+  - PasswordHashAlgorithm
+  - credentialType
+  - CredentialCount
+  - AuthScheme
+  - AuthenticationType
+  - AuthorizationPolicy
+  - IsAuthenticated
+  - LoginAttempts
+  - FailedPasswordAttempts
+  - TokenExpiresIn
+  - TokenType
+  - certificateThumbprint
+  - ThumbprintAlgorithm
+
+# Scopes, used as the `scope` field. Taken from OpenTelemetry semantic
+# conventions and from how the three corpora are actually shaped.
+scopes:
+  - otel.attribute
+  - otel.resource
+  - config.env
+  - config.appsettings
+  - config.yaml
+  - http.header
+  - http.query
+  - message.kv
+  - message.slot
+  - code.kwarg
+  - db.connection
+  - k8s.secret_ref
+  - ci.variable

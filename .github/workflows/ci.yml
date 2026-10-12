@@ -54,7 +54,7 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --group dev --locked
+        run: uv sync --group dev --group datagen --locked
 
       - name: Lint
         run: uv run ruff check .
@@ -64,6 +64,64 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+      # No fixture corpus is committed: the generator emits format-correct vendor
+      # credentials, which GitHub's push protection blocks — correctly. Generate
+      # one here and validate that instead.
+      - name: Generate a corpus and validate it against the unit schema
+        run: >-
+          uv run --group datagen python -m datagen.generate
+          --config datagen/configs/v0.yaml --seed 20261011
+          --size 500 --out "$RUNNER_TEMP/corpus"
+          --manifest "$RUNNER_TEMP/manifest.json"
+
+      - name: Validate
+        run: >-
+          uv run --group datagen python -m datagen.validate
+          "$RUNNER_TEMP/corpus/train.jsonl"
+          "$RUNNER_TEMP/corpus/val.jsonl"
+          "$RUNNER_TEMP/corpus/test.jsonl"
+
+  synthetic-manifest:
+    name: synthetic-sample manifest
+    runs-on: ubuntu-latest
+    env:
+      # Keep in step with the gitleaks rev in .pre-commit-config.yaml: the
+      # manifest check is only as good as the rule set it scans with, so the
+      # hook and CI must use the same one.
+      GITLEAKS_VERSION: "8.30.1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install gitleaks
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o gitleaks.tar.gz "${base}/v${GITLEAKS_VERSION}/${archive}"
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync --group dev --group datagen --locked
+
+      # Exercises tools/check_synthetic_manifest.py end to end, in both
+      # directions: a generated corpus passes against its own manifest, and a
+      # credential-shaped string the generator never produced is rejected. This
+      # is what proves the guard behind the gitleaks allowlist for
+      # tests/fixtures/synthetic/, now that no fixtures are committed.
+      - name: Prove the synthetic-fixture guard works in both directions
+        run: uv run --group datagen pytest tests/datagen/test_manifest_guard.py -v
+
+      # Belt and braces: if anything ever does appear under the guarded path,
+      # it must be a registered, generator-produced value.
+      - name: Check anything under the guarded path is generator-produced
+        run: uv run --group datagen python tools/check_synthetic_manifest.py
 
   gitleaks:
     name: gitleaks (full history)

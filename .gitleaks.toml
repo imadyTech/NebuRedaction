@@ -19,11 +19,17 @@ generated values produced by datagen/ — the project cannot test a credential
 detector without credential-shaped strings, so gitleaks is not run over them.
 
 IMPORTANT: this path is NOT unchecked. Everything under it must pass the
-synthetic-sample manifest check (implemented in NR-0001 §2.3), which verifies
-that each credential-shaped fixture is a registered, generator-produced sample
-with a recorded seed. That check runs in pre-commit and in CI, and it is the
-control that actually keeps real credentials out of this path. Do not add any
-further allowlisted path without an equivalent check behind it.
+synthetic-sample manifest check (NR-0001 §2.3), which verifies that each
+credential-shaped fixture is a registered, generator-produced sample with a
+recorded seed. That check runs in pre-commit and in CI, and it is the control
+that actually keeps real credentials out of this path. Do not add any further
+allowlisted path without an equivalent check behind it.
+
+As it happens the path is also empty in git: no fixture corpus is committed,
+because the generator emits format-correct vendor credentials and GitHub's push
+protection blocks them — correctly. Fixtures are generated on demand instead.
+The allowlist and the manifest check both stay, so that anything added here
+later is still provably generator-produced.
 """
 paths = [
     '''(^|/)tests/fixtures/synthetic/''',

@@ -5,6 +5,20 @@ runs/
 # --- model artifacts (release artifacts are handled separately) ---
 *.nrm
 
+# --- credential-shaped test fixtures ---
+#
+# The generator produces format-correct vendor credentials on purpose, so a
+# committed fixture corpus trips GitHub's push protection — which is a control
+# this project wants enabled, not excluded. Fixtures are therefore generated on
+# demand and never committed; they are deterministic from the seed, so tests
+# build them in a temporary directory instead of reading them from git.
+#
+# tools/check_synthetic_manifest.py still guards this path: anything that does
+# appear here must be a registered, generator-produced value, and an end-to-end
+# test proves the guard works in both directions.
+tests/fixtures/synthetic/
+tests/fixtures/synthetic-manifest.json
+
 # --- secrets ---
 .env
 .env.*

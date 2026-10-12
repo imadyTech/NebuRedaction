@@ -44,14 +44,33 @@ weights and the synthetic training corpus.
 
 ## Data policy
 
-No dataset, model weight, credential or `.env` file is ever committed. Test
-fixtures may only contain synthetic samples, and those are registered in a
-synthetic-sample manifest that CI verifies.
+No dataset, model weight, credential or `.env` file is ever committed, and no
+credential-shaped test fixture either: the generator emits format-correct vendor
+credentials, so committing them would be indistinguishable from a leak to any
+scanner that matches vendor patterns. Fixtures are generated on demand instead —
+generation is deterministic from the seed, so tests build them in a temporary
+directory.
 
-Third-party datasets stay local and are never redistributed. How each one may
-be used differs per source and is recorded, with the licence wording it follows
-from, in [docs/licensing/R0-license-review.md](docs/licensing/R0-license-review.md).
+The guard is still there and still tested. Anything that does appear under
+`tests/fixtures/synthetic/` must have its SHA-256 registered in a
+synthetic-sample manifest, which the pre-commit hook and CI both verify, and an
+end-to-end test proves the guard rejects a credential-shaped string the
+generator never produced.
+
+The released models are trained on synthetic data and nebuLog's own demo logs
+only. Of the third-party datasets, **CredData is used for local evaluation
+only** — it never enters training, threshold selection or model choice — and
+**LogHub and SDLog are not used at all in this version**. No third-party data is
+downloaded into the repository or redistributed; `corpus/` holds the acquisition
+scripts and processing recipes, never the data. Details and the licence wording
+each decision follows from are in
+[docs/licensing/R0-license-review.md](docs/licensing/R0-license-review.md).
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+The code, the synthetic dataset, the published model weights and the
+documentation are **MIT** licensed. See [LICENSE](LICENSE).
+
+Third-party data is not distributed with this repository. The sources it uses,
+their licences, what each is used for and the attribution owed are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,185 @@
+# Mapping from CredData's categories to nebuRedaction's seven classes.
+# Work order NR-0001 §2.4 item 2. Verified against CredData at commit
+# 0b1940e171725ad8937311120b191602608a4801 (337 meta files, 67,896 rows).
+#
+# HOW CREDDATA LABELS THINGS
+#
+# Each meta row has a `GroundTruth` of T (a real credential), F (not one) or X
+# (undecided), and a `Category` which is a *set* of tokens joined by colons —
+# `Password:URL Credentials`, `Auth:Key:Token`. So a row can say several things
+# at once, and the mapping has to resolve a set, not a single label.
+#
+# RESOLUTION RULES
+#
+# 1. Split `Category` on ':'. Map each token through `tokens` below.
+# 2. If several classes result, keep the one highest in `priority`.
+# 3. A token in `ignored_tokens` contributes nothing but does not make the row
+#    unmappable — `Auth` alone is too vague to classify, but `Auth:Password` is
+#    a password.
+# 4. A token in `excluded_tokens` means the row is *not* a secret under plan
+#    §3.2 even though CredData marked it T. Those rows are dropped from the
+#    positives and counted; they are not silently turned into negatives either,
+#    because CredData's judgement that the value is sensitive is evidence we
+#    have no basis to overturn in the other direction.
+# 5. A row whose tokens produce no class and are not all ignored/excluded is
+#    unmappable. Unmappable rows are dropped and reported by category, so the
+#    conversion's coverage is auditable rather than assumed.
+#
+# WHY THIS PRIORITY ORDER
+#
+# CredData marks the credential's character span (`ValueStart`/`ValueEnd`), and
+# the converted unit's value is that span. For `Password:URL Credentials` the
+# span is usually the password inside the URL, not the whole URL — so `password`
+# outranks `connection_string`. `connection_string` is therefore reached only
+# when the span really is a whole connection string.
+#
+# `private_key` is first because key material is unambiguous and the most
+# severe. `api_key` is last among the secret classes because `Key`, `Secret` and
+# `API` are CredData's catch-all tokens: anything that reaches `api_key` has
+# failed to match something more specific.
+priority:
+  - private_key
+  - password
+  - connection_string
+  - cookie
+  - token
+  - api_key
+
+# Token -> class. Grouped by target class, with the reasoning where a choice
+# could reasonably have gone the other way.
+tokens:
+  private_key:
+    - PEM Private Key
+    - BASE64 Private Key
+    - BASE64 encoded PEM Private Key
+    # A JSON Web Key and a PASERK are serialised key material; a NATS NKEY seed
+    # is an Ed25519 private seed. All three are private keys in a different
+    # envelope, which is exactly the generalisation the model should make.
+    - JWK
+    - PASERK Keys
+    - NKEY Seed
+
+  password:
+    - Password
+    - SQL Password
+    - CMD Password
+    - CURL User Password
+    - CMD ConvertTo-SecureString
+    # HTTP Basic is base64 of user:password, and the generator labels it
+    # `password` too (datagen/families/passwords.py), so the two corpora agree.
+    - Basic Authorization
+
+  connection_string:
+    - URL Credentials
+
+  # CredData has no cookie category at all. That is a real coverage gap in the
+  # external test set, not an omission here: v0.1's `cookie` class is evaluated
+  # on synthetic and own data only, and the evaluation report must say so.
+  cookie: []
+
+  token:
+    - Token
+    - JSON Web Token
+    - Bearer Authorization
+    - NTLM Token
+    - PASETO Token
+    - PASETO Token:Token
+    - Azure Access Token
+    - Google OAuth Access Token
+    - Google OAuth Refresh Token
+    - Facebook Access Token
+    - Docker Swarm Token
+    - CMD Token
+    # A one-time-password seed is a long-lived shared secret rather than an
+    # issued token, but it authenticates, is not a platform API key, and has no
+    # better home among the seven classes.
+    - OTP / 2FA Secret
+
+  api_key:
+    - Key
+    - Secret
+    - API
+    - Credential
+    - CMD Secret
+    # AWS access key IDs are the `AKIA...` half of a key pair. Not secret on
+    # their own, but the generator emits them as `api_key`
+    # (datagen/families/api_keys.py), so both corpora must agree or the
+    # comparison is meaningless.
+    - AWS Client ID
+    - Alibaba Access Key ID
+    # Multi-line vendor credential blocks: an id and a secret across two lines.
+    - AWS Multi
+    - Google Multi
+    - Alibaba Multi
+    - Twilio Multi
+    # Named vendor credentials. Several are called "token" by their vendor but
+    # are long-lived platform keys, which is `api_key` under plan §3.2: a token
+    # is issued by an authorisation server and expires.
+    - Google API Key
+    - MailGun API Key
+    - Dropbox App secret
+    - Twilio Credentials
+    - Stripe Credentials
+    - Salesforce Credentials
+    - Akamai Credentials
+    - PostHog Credentials
+    - Postman Credentials
+    - WunderGraph API Key
+    - Perplexity API Key
+    - Anthropic API Key
+    - Slack Token
+    - Github Classic Token
+    - Jira / Confluence PAT token
+    - Grafana Provisioned API Key
+    - Grafana Service Account Token
+    - Grafana Access Policy Token
+
+# Tokens that say nothing on their own. They refine a row that already has a
+# class and are dropped otherwise.
+ignored_tokens:
+  # "Auth" marks the value as authentication-related without saying what it is.
+  - Auth
+  # CredData's own catch-all for values it chose not to classify.
+  - Other
+  # Not a credential type, just the surrounding syntax.
+  - CURL Options
+  - info
+
+# Tokens whose values are not secrets under plan §3.2. A row that resolves to
+# nothing but these is dropped from the positives and counted.
+excluded_tokens:
+  # A nonce is single-use and public by design; a salt is stored in clear beside
+  # the hash it salts. Neither is a credential, and treating them as positives
+  # would train the model toward false alarms on exactly the high-entropy
+  # non-secrets the negatives exist to suppress.
+  - Nonce
+  - Salt
+  # Identifiers, not authenticators. `neg.license_key` in the generator makes
+  # the same call about product keys.
+  - AWS S3 Bucket
+  - Firebase Domain
+  - Tencent WeChat API App ID
+  - Product Activation Key
+  # Plan §3.3's stated ambiguity: a UUID may be a session id or a correlation
+  # id, and the value alone cannot say. A row labelled only `UUID` is dropped;
+  # where `UUID` accompanies a real class it is kept and the unit is flagged
+  # `ambiguous` instead.
+  - UUID
+
+# Tokens that mark a unit ambiguous when they appear alongside a real class.
+ambiguity_tokens:
+  - UUID
+  - Nonce
+  - Salt
+
+# What to do with each GroundTruth value.
+ground_truth:
+  # A real credential: becomes a positive, class from the rules above.
+  T: positive
+  # Not a credential: becomes a negative, label `none`. These are the hard
+  # negatives the external test set contributes, and they are the majority of
+  # CredData's rows.
+  F: negative
+  # Undecided by the dataset's own reviewers. Dropped: a test set needs a known
+  # answer, and guessing here would put our guess into the measurement.
+  X: drop

@@ -30,3 +30,37 @@ repos:
         args: ["--fix=auto"]
       - id: forbid-submodules
       - id: detect-private-key
+        # This hook matches the PEM marker line wherever it appears, which here
+        # means three kinds of false positive. What still guards each is noted,
+        # because an exclusion with nothing behind it is how a hook stops
+        # working without anyone noticing.
+        #
+        #   tests/fixtures/synthetic/   generated PEM blocks with random bodies.
+        #                               Guarded by the synthetic-sample manifest
+        #                               hook below — every credential-shaped
+        #                               string there must be generator-produced.
+        #   datagen/families/           the marker strings the generator builds
+        #   tests/datagen/              blocks from, and the assertions that
+        #                               check it did. No key bodies. Still
+        #                               scanned by gitleaks above, whose
+        #                               private-key rule needs an actual body.
+        exclude: |
+          (?x)^(
+            tests/fixtures/synthetic/.*
+            |datagen/families/(_primitives|private_keys)\.py
+            |tests/datagen/test_(families|manifest_and_lexicon)\.py
+          )$
+
+  - repo: local
+    hooks:
+      - id: check-synthetic-manifest
+        name: synthetic-sample manifest (every credential-shaped fixture must be generator-produced)
+        entry: python tools/check_synthetic_manifest.py
+        language: system
+        files: ^tests/fixtures/synthetic/
+        pass_filenames: true
+        # .gitleaks.toml exempts tests/fixtures/synthetic/ from the scan above,
+        # because a credential detector needs credential-shaped fixtures. This
+        # hook is what stands behind that exemption: it rescans the path with
+        # the allowlist removed and requires every finding to appear in the
+        # synthetic-sample manifest (NR-0001 §2.3).

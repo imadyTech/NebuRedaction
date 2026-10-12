@@ -6,6 +6,10 @@ requires-python = ">=3.12,<3.13"
 dependencies = []
 
 [dependency-groups]
+datagen = [
+    "jsonschema>=4.26.0",
+    "pyyaml>=6.0.3",
+]
 dev = [
     "ruff>=0.14.0",
     "pytest>=8.4.0",
@@ -64,11 +68,17 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["D100", "D101", "D102", "D103", "D104"]
+# Each format family cites the vendor documentation its format comes from. Those
+# URLs are long and cannot be wrapped without breaking them, and the citation is
+# a requirement (NR-0001 §2.2 item 1), so the line-length limit gives way here
+# rather than the evidence.
+"datagen/families/*.py" = ["E501"]
 
 [tool.ruff.format]
 docstring-code-format = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["python/tests"]
+testpaths = ["python/tests", "tests"]
 addopts = "-ra --strict-markers --strict-config"
+pythonpath = ["."]

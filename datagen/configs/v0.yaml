@@ -1,0 +1,113 @@
+# Synthetic corpus v0 (NR-0001 §2.2).
+#
+# The generator is a pure function of this file plus the --seed argument: the
+# same pair must produce byte-identical output, which the test suite checks.
+# Changing anything here, or any family's code, produces a different corpus —
+# so bump `name` when that happens rather than silently replacing v0.
+
+name: v0
+generator_version_required: "0.1.0"
+
+# Default sizes from NR-0001 §2.2 item 8. Overridable with --size.
+splits:
+  train: 200000
+  val: 20000
+  test: 20000
+
+# Share of each split that is a positive (a real secret).
+#
+# Deliberately not representative. In a real log stream secrets are rarer than
+# one in a million attributes, and training on that ratio would teach a model to
+# answer "none" always. Threshold selection and the reported false-positive rate
+# are what have to reflect the real prior (plan §4.5), not the training mix.
+positive_ratio: 0.42
+
+# Of the negatives, the share sitting under a credential-suggesting key name or
+# template while the value is not a credential. NR-0001 §2.2 item 4 sets a floor
+# of 10% in every split; 24% is well above it because NR-0000's teacher probe
+# showed this is the failure mode that matters, and these cost nothing to make.
+#
+# This share is exact, not approximate: the generator computes the counts and
+# shuffles, rather than drawing each record's kind at random. The remaining 76%
+# of negatives sit under neutral key names, which is what a real log looks like.
+adversarial_negative_ratio: 0.24
+
+# How the adversarial quota divides between its three carriers. The three must
+# sum to 1; the last is taken as the remainder so rounding cannot break the
+# total.
+#
+#   sensitive_key   `ApiKey = <uuid>` — a name that genuinely means "secret",
+#                   over a value that is not one. The commonest real-world
+#                   false positive.
+#   misleading_key  `tokenCount = 128` — a name that merely contains the word.
+#   template        `Failed password for invalid user <*>` — the trap is in the
+#                   surrounding message, not in the attribute name at all. This
+#                   is the exact shape the Laya teacher misclassified with
+#                   probability 0.972 in NR-0000 §9.5.
+adversarial_carrier_split:
+  sensitive_key: 0.4
+  misleading_key: 0.3
+  template: 0.3
+
+# Key-name contexts apply to positives only. A negative's context is fixed by
+# which part of the quota above it belongs to, which is what makes that quota
+# exact.
+
+# How often a positive's key name points at the right answer, says nothing, or
+# points the wrong way (NR-0001 §2.2 item 5). The test split leans further
+# toward neutral and misleading names than training does, so the reported
+# numbers are not flattered by helpful key names.
+context_mix:
+  train:
+    hinting: 0.50
+    neutral: 0.30
+    misleading: 0.20
+  val:
+    hinting: 0.50
+    neutral: 0.30
+    misleading: 0.20
+  test:
+    hinting: 0.40
+    neutral: 0.35
+    misleading: 0.25
+
+# Families held out of training entirely, to measure generalisation to formats
+# the model has never seen (plan §5.3). They appear only in the test split.
+#
+# Chosen to span classes rather than to be easy: six positive families across
+# api_key, token, connection_string, password, private_key and cookie, and four
+# negative families. That is about 15% of each side. Two of the choices are
+# deliberately awkward — `pem.body_without_header` has no structural marker at
+# all, and `neg.public_key_pem` is the nearest possible miss to a real private
+# key — so the held-out score is a hard number rather than a comfortable one.
+held_out_families:
+  positive:
+    - azure.ad_client_secret
+    - oauth.google_refresh_token
+    - amqp.connection_uri
+    - basic_auth.bare_base64
+    - pem.body_without_header
+    - cookie.laravel_session
+  negative:
+    - neg.public_key_pem
+    - neg.ulid
+    - neg.base64_of_text
+    - neg.image_digest_reference
+
+# Negative families whose values are plausible fillers for the
+# template-adversarial slots ("Failed password for invalid user <*>"). Using an
+# arbitrary negative there would produce nonsense like a MIME type as a user
+# name; these read like something that could really occupy the slot.
+template_adversarial_families:
+  - neg.slug_identifier
+  - neg.short_alnum_id
+  - neg.uuid_v4
+  - neg.email_address
+  - neg.sha256_hex
+  - neg.md5_hex
+  - neg.hostname
+  - neg.camel_case_value
+  - neg.semver
+  - neg.nanoid
+  - neg.correlation_slug
+  - neg.git_commit_sha

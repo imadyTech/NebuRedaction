@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/imadyTech/NebuRedaction/datagen/schema/unit.schema.json",
+  "title": "nebuRedaction detection unit",
+  "description": "One attribute of one log record, with the context needed to classify it. Work order NR-0001 §2.1; plan §7.3. One JSON object per line in a JSON Lines file.",
+  "type": "object",
+  "required": ["id", "key", "value", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Identifier, unique within a dataset.",
+      "type": "string",
+      "minLength": 1
+    },
+    "key": {
+      "description": "The attribute name. Fragments cut out of a message body use the <slot:...> form.",
+      "type": "string"
+    },
+    "value": {
+      "description": "The attribute value, always a string even when it denotes a number.",
+      "type": "string"
+    },
+    "label": {
+      "description": "One of the seven v0.1 classes (plan §3.2). Absent for unlabelled data; null is not permitted, omit the field instead.",
+      "type": "string",
+      "enum": [
+        "none",
+        "password",
+        "token",
+        "api_key",
+        "private_key",
+        "connection_string",
+        "cookie"
+      ]
+    },
+    "template": {
+      "description": "The message template the attribute appeared in.",
+      "type": "string"
+    },
+    "scope": {
+      "description": "Scope or origin type, such as otel.attribute, config.env, http.header or message.kv.",
+      "type": "string"
+    },
+    "family": {
+      "description": "Format family, such as aws.access_key_id or neg.uuid_v4. Dataset splits are made by family (plan §5.3).",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._][a-z0-9]+)*$"
+    },
+    "ambiguous": {
+      "description": "True when the value alone cannot settle the label (plan §3.3), so the label follows the bias-toward-redaction convention.",
+      "type": "boolean"
+    },
+    "source": {
+      "description": "Where the unit came from. Third-party sources carry their dataset name and are barred from training and labeling paths.",
+      "type": "string",
+      "pattern": "^(synth|own|third_party:[a-z0-9][a-z0-9_-]*)$"
+    },
+    "meta": {
+      "description": "Provenance. Open-ended, but these keys have fixed meanings when present.",
+      "type": "object",
+      "properties": {
+        "generator_version": {
+          "description": "Version of the synthetic generator that produced the unit.",
+          "type": "string"
+        },
+        "seed": {
+          "description": "The seed that produced this unit's value, so a single record can be regenerated.",
+          "type": "integer"
+        },
+        "adversarial": {
+          "description": "True for a negative whose key name or template contains a credential-suggesting word while the value is not a credential (NR-0001 §2.2 item 4).",
+          "type": "boolean"
+        },
+        "context": {
+          "description": "How the key name relates to the value: whether it points at the right answer, says nothing, or points the wrong way.",
+          "type": "string",
+          "enum": ["hinting", "neutral", "misleading"]
+        },
+        "split": {
+          "description": "The split this unit was generated for.",
+          "type": "string",
+          "enum": ["train", "val", "test"]
+        },
+        "held_out_family": {
+          "description": "True when the unit's family is one of the families held out of training to test generalisation to unseen formats.",
+          "type": "boolean"
+        },
+        "source_line": {
+          "description": "Line number in the originating third-party file.",
+          "type": "integer"
+        },
+        "source_file": {
+          "description": "Path of the originating third-party file, relative to its dataset root.",
+          "type": "string"
+        },
+        "original_label": {
+          "description": "The label as the originating dataset expressed it, before mapping to the seven classes.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

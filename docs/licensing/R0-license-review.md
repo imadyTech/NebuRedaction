@@ -11,16 +11,31 @@ All URLs were checked on **2026-10-11**.
 
 **This file is an engineering record. It is not legal advice.**
 
-> **Decision update, 2026-10-12 (Frank).** LogHub and SDLog's data are removed
-> from *evaluation* and are instead used for **internal training only, with no
-> redistribution**. This reverses plan §5.1's arrangement for those two sources
-> and supersedes the recommendation recorded in entries #2 and #3 below. The
-> finding that produced that recommendation still stands and is kept here
-> unchanged, together with what the new arrangement implies — see
-> "Consequences of the 2026-10-12 decision". Plan §5.1, EXECUTION.md §8 and
-> NR-0001 still describe the old rule and need to be updated by the
-> orchestrating process; until they are, the written rules and the actual
-> arrangement disagree.
+> **Decision, 2026-10-12, second and current (Frank, via the orchestrating
+> process).** **LogHub and SDLog are not used at all in v0.1** — neither for
+> training nor for evaluation. They are not downloaded. After the project is
+> published, their maintainers will be asked for permission, and the sources may
+> be added in a later version if it is granted. CredData remains in use for
+> **local evaluation only**. This is now recorded in plan §5.1 item 0 and
+> EXECUTION.md §8.
+>
+> This supersedes the first decision of the same day, quoted below, and it also
+> resolves the risks that decision raised: with neither source in the training
+> set, no released model can be derived from data whose licence does not cover
+> it. Entries #2 and #3 and the section "Consequences of the 2026-10-12
+> decision" are kept unchanged as the record of how the question was reached and
+> argued, but they describe a superseded arrangement — read them as history, not
+> as current policy.
+>
+> <details><summary>Superseded: first decision of 2026-10-12</summary>
+>
+> LogHub and SDLog's data are removed from *evaluation* and used for internal
+> training only, with no redistribution. Reversed the same day in favour of not
+> using them at all, after this review pointed out that publishing a model
+> trained on them would put the "no redistribution" undertaking in tension with
+> plan §8.2 and §8.3.
+>
+> </details>
 
 ---
 
