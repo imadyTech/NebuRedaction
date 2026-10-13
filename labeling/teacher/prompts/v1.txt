@@ -1,0 +1,72 @@
+# NebuRedaction teacher prompt — version 1
+#
+# The prompt handed to the Laya teacher, as a `choice` question over the seven
+# classes of plan §3.2 (plan §4.4 specifies the typed-question form).
+#
+# This file is the source of truth. `labeling.teacher.prompt` parses it and
+# records its SHA-256 in every checkpoint and output file, so a label can always
+# be traced to the exact wording that produced it and an edited prompt cannot
+# silently mix two sets of labels together.
+#
+# Versioning rule: this file is frozen. Any change to the wording means a new
+# `v2.txt`, because a prompt change makes the labels it produced incomparable
+# with the ones before it. NR-0003 §2.2 item 1 requires the versioning; this
+# note records what "versioned" is taken to mean.
+#
+# Difference from the NR-0000 probe. The probe's prompt had no guidance about
+# the message template, and it produced the project's defining failure: the user
+# name in `Failed password for invalid user webmaster` was labelled a password
+# with probability 0.972, because the word `password` was in the template. The
+# `[warning]` section below is new in v1 and addresses it directly. The
+# consequence is that v1's false-positive rate on template-hinted negatives is
+# NOT comparable with the NR-0000 measurement — the prompt changed, so a
+# difference measures the prompt and the model together. The execution report
+# says so, and §2.2 item 6's adversarial set measures v1 on its own terms.
+#
+# Lines beginning with `#` are comments and are not part of the prompt.
+
+[instructions]
+The state is one attribute taken from an application log record. Decide what
+kind of value it holds. Answer 'none' unless the value really is a secret
+credential that must be redacted before the log is written.
+
+[warning]
+Judge the attribute value itself. The attribute name and the message template
+say what the value is *about*, which is useful context, but they are not
+evidence that the value is a credential. A message about a failed password
+login mostly contains user names, hosts and ports; an attribute named
+`PasswordPolicy` or `TokenExpiresIn` holds a policy name or a number. Redacting
+those is a false positive and is worse than it looks, because it destroys the
+log's usefulness while protecting nothing.
+
+[state]
+attribute name: {key}
+attribute value: {value}
+message template: {template}
+scope: {scope}
+
+[criteria:none]
+not a secret: an identifier, hash, UUID, trace or span id, version, timestamp,
+file path, hostname, count, size, user name, status, region, product name or
+ordinary text
+
+[criteria:password]
+a password, passphrase or PIN used to authenticate a human or a service account
+
+[criteria:token]
+a bearer, session, OAuth, refresh or JWT token: a credential issued by an
+authorisation server and valid for a limited time
+
+[criteria:api_key]
+an API key, client secret, access key id or secret access key for a cloud or
+SaaS platform, or any other long high-entropy application secret
+
+[criteria:private_key]
+a private key or certificate key material, such as a PEM or PKCS block
+
+[criteria:connection_string]
+a database, broker or service connection string or URL that carries an embedded
+user name and password
+
+[criteria:cookie]
+an HTTP cookie or session cookie value that authenticates a browser session
