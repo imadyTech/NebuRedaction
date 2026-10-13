@@ -315,6 +315,12 @@ def build_queue(
     return sorted(chosen, key=lambda item: (item.unit.source != "own", ordering(item)))
 
 
+#: Verdicts a decision record may carry. ``voided`` supersedes an earlier
+#: decision without erasing it: the log is append-only so that a change of mind
+#: stays auditable, and a void is a change of mind about a whole batch.
+VERDICTS = frozenset({"confirmed", "corrected", "skipped", "voided"})
+
+
 @dataclass(frozen=True, slots=True)
 class Decision:
     """One reviewer decision (NR-0003 §2.4 item 3).
@@ -384,6 +390,39 @@ def decide(item: QueueItem, reviewer: str, new_label: str | None, note: str = ""
         verdict=verdict,
         note=note,
     )
+
+
+def void_decisions(decisions: Sequence[Decision], reviewer: str, reason: str) -> list[Decision]:
+    """Build records that supersede earlier decisions without erasing them.
+
+    Args:
+        decisions: The decisions to void.
+        reviewer: Who authorised the void.
+        reason: Why, recorded in each record's note.
+
+    Returns:
+        One ``voided`` record per input, carrying the original label and a null
+        new label.
+
+    Appending rather than deleting keeps the audit trail intact — the original
+    decision and the void both remain in the log, and
+    :func:`latest_decisions` resolves to the void. A voided decision leaves the
+    unit with no human label, so the merge falls back: a synthetic unit keeps
+    the generator's label, which §2.3 says wins anyway, and an own-log unit is
+    omitted as unlabelable.
+    """
+    return [
+        Decision(
+            unit_id=decision.unit_id,
+            reviewer=reviewer,
+            reviewed_utc=datetime.now(UTC).isoformat(timespec="seconds"),
+            original_label=decision.original_label,
+            new_label=None,
+            verdict="voided",
+            note=reason,
+        )
+        for decision in decisions
+    ]
 
 
 def append_decision(decision: Decision, path: Path) -> None:

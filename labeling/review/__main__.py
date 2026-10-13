@@ -26,6 +26,7 @@ from datagen.loader import load_for_training
 from labeling.review import (
     OWN_SHARE,
     QUEUE_CAP,
+    VERDICTS,
     QueueItem,
     append_decision,
     build_queue,
@@ -33,6 +34,7 @@ from labeling.review import (
     latest_decisions,
     read_decisions,
     statistics,
+    void_decisions,
 )
 from labeling.rules import read_labels
 
@@ -344,6 +346,34 @@ def review(reviewer: str) -> int:
     return 0
 
 
+def void(verdict: str, reviewer: str, reason: str) -> int:
+    """Supersede every decision carrying a given verdict.
+
+    Args:
+        verdict: The verdict to void, e.g. ``corrected``.
+        reviewer: Who authorised it.
+        reason: Why, recorded against each voided record.
+
+    Returns:
+        ``0`` on success, ``2`` if there is nothing to void.
+
+    Used when a batch of decisions should not be acted on. Nothing is erased:
+    a ``voided`` record is appended for each, so the original decision and the
+    void both stay in the log.
+    """
+    resolved = latest_decisions(read_decisions(DECISIONS))
+    targets = [d for d in resolved.values() if d.verdict == verdict]
+    if not targets:
+        print(f"no decisions with verdict {verdict!r} to void", file=sys.stderr)
+        return 2
+    for record in void_decisions(targets, reviewer, reason):
+        append_decision(record, DECISIONS)
+    print(f"voided {len(targets)} decision(s) with verdict {verdict!r}")
+    print(f"reason recorded: {reason}")
+    print(f"{DECISIONS}")
+    return 0
+
+
 def summarise() -> int:
     """Print the review statistics.
 
@@ -367,6 +397,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", action="store_true", help="build the queue and stop")
     parser.add_argument("--summary", action="store_true", help="show what has been decided")
+    parser.add_argument(
+        "--void",
+        metavar="VERDICT",
+        default=None,
+        help="append records superseding every decision with this verdict; nothing is erased",
+    )
+    parser.add_argument("--reason", default="", help="why, recorded against each voided record")
     parser.add_argument("--cap", type=int, default=QUEUE_CAP, help="maximum queue length")
     parser.add_argument(
         "--own-share",
@@ -382,6 +419,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--reviewer", default="frank", help="recorded against every decision")
     args = parser.parse_args(argv)
 
+    if args.void is not None:
+        if args.void not in VERDICTS:
+            parser.error(f"--void must be one of {sorted(VERDICTS)}")
+        if not args.reason:
+            parser.error("--void requires --reason")
+        return void(args.void, args.reviewer, args.reason)
     if args.build:
         return build(args.cap, None if args.no_own_share else args.own_share)
     if args.summary:

@@ -465,3 +465,59 @@ def test_a_reserved_slot_is_never_left_idle() -> None:
     queue = build_queue(units, rules, teacher, {"own-0": False}, cap=20, own_share=0.5)
     assert len(queue) == 20
     assert sum(1 for item in queue if item.unit.source == "own") == 1
+
+
+# --- voiding a batch of decisions --------------------------------------------
+
+
+def test_voiding_supersedes_without_erasing(tmp_path: Path) -> None:
+    """The log is append-only, so a void is another record, not a deletion.
+
+    Used when a batch of decisions should not be acted on. Both the original
+    decision and the void stay in the file, and `latest_decisions` resolves to
+    the void.
+    """
+    from labeling.review import void_decisions
+
+    path = tmp_path / "review_v0.jsonl"
+    original = decide(queue_item("api_key"), "frank", "none")
+    append_decision(original, path)
+
+    for record in void_decisions([original], "frank", "contradicts construction"):
+        append_decision(record, path)
+
+    assert len(read_decisions(path)) == 2
+    resolved = latest_decisions(read_decisions(path))
+    assert resolved["q1"].verdict == "voided"
+    assert resolved["q1"].new_label is None
+    assert resolved["q1"].note == "contradicts construction"
+    # The original is still there to audit.
+    assert read_decisions(path)[0].new_label == "none"
+
+
+def test_a_voided_decision_leaves_the_generator_label_standing() -> None:
+    """Which is the point of voiding rather than deleting.
+
+    A void gives the unit no human label, so the merge falls back — and §2.3
+    says the generator wins on synthetic data anyway. This is what stopped 46
+    corrections that contradicted construction (an AWS secret access key
+    relabelled `none`) from reaching NR-0004's training data.
+    """
+    from labeling.merge import merge_unit
+    from labeling.review import void_decisions
+
+    original = decide(queue_item("api_key"), "frank", "none")
+    voided = void_decisions([original], "frank", "contradicts construction")[0]
+    synthetic = DetectionUnit(id="q1", key="Id", value="x" * 40, source="synth", label="api_key")
+    merged = merge_unit(synthetic, rule("q1"), distribution("none", 0.153), None, voided)
+    assert merged is not None
+    assert merged.label == "api_key"
+    assert merged.label_source == "generator"
+    assert merged.review_verdict == "voided"
+
+
+def test_voided_is_an_accepted_verdict() -> None:
+    """So that a void record round-trips and the statistics count it."""
+    from labeling.review import VERDICTS
+
+    assert "voided" in VERDICTS
