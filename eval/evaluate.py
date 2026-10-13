@@ -226,12 +226,39 @@ def evaluate_on(
             )
         operating_points[point_name] = {"threshold": threshold, "slices": per_slice}
 
+    # Average precision does not depend on a threshold, so it is reported
+    # outside the operating points. NR-0003's control group 4 is what made this
+    # necessary: it is the first system for which *no* threshold on the
+    # selection set reaches either target false-positive rate, and with every
+    # metric nested under an operating point its report came out with no
+    # numbers at all. A system that cannot be operated anywhere still has a
+    # measurable ranking quality, and that is the honest thing to say about it.
+    threshold_free: dict[str, Any] = {}
+    for name, indices in _slice_indices(applicable, units).items():
+        sliced_scores = [scores[i] for i in indices]
+        sliced_truth = [units[i].should_redact for i in indices]
+        positives = sum(1 for value in sliced_truth if value)
+        threshold_free[name] = {
+            "count": len(indices),
+            "positives": positives,
+            # Average precision is undefined without a positive to rank, and
+            # the adversarial-negative slice is all negatives by construction.
+            # Reporting 0.0 there would read as "ranks them worst possible"
+            # rather than "the question does not apply".
+            "average_precision": (
+                round(metrics.average_precision(sliced_scores, sliced_truth), 6)
+                if positives
+                else None
+            ),
+        }
+
     result: dict[str, Any] = {
         "description": test_set.description,
         "count": len(units),
         "positives": sum(1 for unit in units if unit.should_redact),
         "negatives": sum(1 for unit in units if not unit.should_redact),
         "slice_descriptions": {s.name: s.description for s in applicable},
+        "threshold_free": threshold_free,
         "operating_points": operating_points,
     }
 
