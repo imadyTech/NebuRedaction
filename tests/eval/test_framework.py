@@ -252,10 +252,22 @@ class TestRegistry:
             build("no-such-system")
 
     def test_placeholders_score_nothing_and_say_so(self, tiny_set):
-        output = build("laya").score(tiny_set.units)
+        """The student models are still placeholders; NR-0004 fills them."""
+        output = build("student-a").score(tiny_set.units)
         assert all(row == {} for row in output.scores)
         assert "placeholder" in output.notes["status"]
         assert "not a measurement" in output.notes["warning"]
+
+    def test_control_group_4_is_no_longer_a_placeholder(self):
+        """NR-0003 implemented it, as a replay of precomputed probabilities.
+
+        It cannot be built from a bare name, because the adapter needs the path
+        to the probabilities for the corpus being evaluated and guessing one
+        would silently evaluate the wrong file. The registry entry exists so
+        that `--systems laya` explains itself instead of raising a KeyError.
+        """
+        with pytest.raises(ValueError, match="control_group_4"):
+            build("laya")
 
 
 class TestDeterminism:
@@ -322,6 +334,22 @@ class TestTestsetLock:
         assert not any("data/own" in path for path in paths)
 
     def test_verify_reports_drift_rather_than_raising(self, tmp_path):
+        """A changed digest is reported, not raised.
+
+        Built against a fake repository root rather than the real one. The
+        corpus is generated, not committed, so on a fresh checkout — CI — the
+        real paths do not exist and `verify_lock` reports them *missing*, which
+        is a different branch from the one under test. The test passed locally
+        only because the author's corpus happened to be on disk, which is
+        exactly the kind of hidden environment dependency that should not
+        decide whether a gate goes green.
+        """
+        root = tmp_path / "root"
+        for spec in testsets.SPECS:
+            target = root / spec.path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(f"content of {spec.name}", encoding="utf-8")
+
         broken = tmp_path / "testsets.lock"
         broken.write_text(
             json.dumps(
@@ -330,17 +358,53 @@ class TestTestsetLock:
                     "schema_version": "1.0",
                     "testsets": [
                         {
-                            "name": "synth_test",
-                            "path": "data/synth/v0/test.jsonl",
-                            "sha256": "0" * 64,
+                            "name": spec.name,
+                            "path": spec.path,
+                            # Only synth_test's digest is wrong, so the drift
+                            # reported must name that set and nothing else.
+                            "sha256": (
+                                "0" * 64
+                                if spec.name == "synth_test"
+                                else testsets.file_digest(root / spec.path)
+                            ),
                         }
+                        for spec in testsets.SPECS
                     ],
                 }
             ),
             encoding="utf-8",
         )
-        problems = testsets.verify_lock(broken)
-        assert any("digest changed" in problem for problem in problems)
+        problems = testsets.verify_lock(broken, root=root)
+        assert len(problems) == 1
+        assert "synth_test" in problems[0]
+        assert "digest changed" in problems[0]
+
+    def test_verify_reports_a_missing_corpus_separately(self, tmp_path):
+        """The branch the previous test used to hit by accident on CI.
+
+        A generated corpus that has not been generated is a different problem
+        from one that has drifted, and the report has to be able to say which.
+        """
+        root = tmp_path / "empty"
+        root.mkdir()
+        lock = tmp_path / "testsets.lock"
+        lock.write_text(
+            json.dumps(
+                {
+                    "lock_version": 1,
+                    "schema_version": "1.0",
+                    "testsets": [
+                        {"name": spec.name, "path": spec.path, "sha256": "0" * 64}
+                        for spec in testsets.SPECS
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        problems = testsets.verify_lock(lock, root=root)
+        assert len(problems) == len(testsets.SPECS)
+        assert all("is missing" in problem for problem in problems)
+        assert not any("digest changed" in problem for problem in problems)
 
     def test_labelled_only_drops_unlabelled_units(self):
         kept = testsets.labelled_only([unit("1", "k", "v", "api_key"), unit("2", "k", "v", None)])

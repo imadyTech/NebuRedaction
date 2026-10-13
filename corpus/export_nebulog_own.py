@@ -69,16 +69,158 @@ _TRANSPORT_ATTRIBUTES = frozenset(
 #: Splits a rendered message body into candidate fragments, for the body-mode
 #: units of plan §3.1. Keeps a key-ish prefix where one is adjacent, so
 #: `access_token=abc` yields the key as well as the value.
+#:
+#: This finds candidates; :func:`is_body_candidate` decides which to keep.
+#: Separating the two is what makes the decision testable on its own, and the
+#: decision is where NR-0001's defect was.
 _BODY_CANDIDATE = re.compile(
     r"""
-    (?:(?P<key>[A-Za-z_][A-Za-z0-9_.\-]{0,40})\s*[=:]\s*)?
-    (?P<value>
-        [A-Za-z0-9+/_\-.:~%]{8,}
-      | "[^"]{8,}"
+    (?:(?P<key>[A-Za-z_][A-Za-z0-9_.\-]{0,40})\s*(?P<sep>[=:])\s*)?
+    (?:
+        "(?P<quoted>[^"]{8,})"
+      | (?P<value>[A-Za-z0-9+/_\-.:~%@]{8,})
     )
     """,
     re.VERBOSE,
 )
+
+#: Trailing sentence punctuation, which the candidate pattern happily absorbs:
+#: `established.` and `received:` both arrived as "values" in NR-0001's export.
+#: Not `=`, which is base64 padding.
+_TRAILING_PUNCTUATION = ":.,;!?)"
+
+#: A single run of letters and nothing else — `authorised`, `auckland`,
+#: `downstream`. Prose, not a value.
+_PROSE_WORD = re.compile(r"^[A-Za-z]+$")
+
+#: Shapes that are a value whatever context they appear in.
+_UNMISTAKABLE_VALUE = (
+    re.compile(r"^[0-9a-fA-F]{16,}$"),  # hex digest or key
+    re.compile(
+        r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    ),  # uuid
+    re.compile(r"^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*$"),  # jwt
+    re.compile(r"^[a-z][a-z0-9+.-]*://"),  # url, with or without credentials
+    re.compile(r"^-----BEGIN "),  # pem block
+)
+
+#: Shortest pure-letter fragment that may still be a value, and only in mixed
+#: case. Below this a letters-only fragment is a word; above it, mixed case is
+#: the only remaining evidence that it is not.
+_PURE_LETTER_VALUE_LENGTH = 20
+
+
+def has_value_shape(value: str) -> bool:
+    """Decide whether a fragment looks like a *value* rather than prose.
+
+    Used for body fragments that carry no key and no quotes, where the shape of
+    the fragment is the only evidence available.
+
+    Args:
+        value: The candidate fragment, already stripped of trailing punctuation.
+
+    Returns:
+        True if the fragment has the character composition of an identifier,
+        digest or credential.
+
+    The asymmetry here is deliberate. A password can be a single lowercase word,
+    so this test *will* reject real secrets when they appear bare in a message
+    body with nothing around them to suggest it. That is the trade NR-0003 §2.0
+    asks for: without a key name or a delimiter there is no evidence to label
+    on, and NR-0001 shows what admitting such fragments costs — 1,510 of 1,545
+    body units were place names and participles. A bare lowercase word under a
+    key name is still kept, because then there is a key name.
+    """
+    for pattern in _UNMISTAKABLE_VALUE:
+        if pattern.search(value):
+            return True
+
+    mixed_case = value != value.lower() and value != value.upper()
+    if _PROSE_WORD.match(value):
+        return len(value) >= _PURE_LETTER_VALUE_LENGTH and mixed_case
+
+    has_digit = any(character.isdigit() for character in value)
+    has_letter = any(character.isalpha() for character in value)
+    if len(value) >= 8 and has_digit and has_letter:
+        return True
+    separated = any(character in "+/_-.:~%@" for character in value)
+    return len(value) >= 16 and (separated or mixed_case)
+
+
+#: Key names that make a following fragment worth keeping whatever it looks
+#: like, so that `password: hunter` survives. A short local list rather than a
+#: reuse of the NR-0002 rule layer's vocabulary: the export runs before any
+#: labelling and should not depend on `eval/`, and a key name admitting a
+#: *candidate* is a much weaker decision than a rule assigning a *label*.
+_CREDENTIAL_KEY_WORDS = frozenset(
+    {
+        "apikey",
+        "auth",
+        "authorization",
+        "cookie",
+        "credential",
+        "credentials",
+        "key",
+        "passwd",
+        "password",
+        "pwd",
+        "secret",
+        "session",
+        "signature",
+        "token",
+    }
+)
+
+
+def _is_key_like(key: str) -> bool:
+    """Decide whether a prefix reads as an attribute name rather than a word.
+
+    Args:
+        key: The candidate key.
+
+    Returns:
+        True for `access_token`, `db.host`, `retry2` and for bare credential
+        words; False for an ordinary word such as `received`.
+    """
+    lowered = key.lower()
+    if lowered in _CREDENTIAL_KEY_WORDS:
+        return True
+    if any(character in "_.-" for character in key):
+        return True
+    return any(character.isdigit() for character in key)
+
+
+def is_body_candidate(key: str | None, separator: str | None, quoted: bool, value: str) -> bool:
+    """Decide whether a body fragment becomes a detection unit (NR-0003 §2.0).
+
+    Args:
+        key: An adjacent key-like prefix, if the pattern found one.
+        separator: The delimiter between key and value, ``=`` or ``:``.
+        quoted: Whether the fragment was enclosed in double quotes.
+        value: The fragment, stripped of trailing punctuation.
+
+    Returns:
+        True if the fragment should be kept. A fragment is kept when it carries
+        its own evidence of being a value — an assignment, quotes, or a key-like
+        name — or, failing that, when its shape says so.
+
+    The two delimiters are not equally informative, which §2.0's wording does
+    not distinguish but the data demands. ``=`` does not occur between two words
+    of prose, so an assignment is evidence on its own. ``:`` occurs in prose
+    constantly: `ack received: downstream authorised` parses as key `received`,
+    value `downstream`, and admitting it would reintroduce exactly the units
+    §2.0 exists to remove. So after a colon, something else must also point at a
+    value — a key-like name, or the fragment's own shape.
+    """
+    if len(value) < 8:
+        return False
+    if quoted:
+        return True
+    if key is not None and separator == "=":
+        return True
+    if key is not None and separator == ":" and _is_key_like(key):
+        return True
+    return has_value_shape(value)
 
 
 def _port_is_open(port: int) -> bool:
@@ -320,11 +462,15 @@ def entry_to_units(entry: dict[str, Any], index: int) -> list[DetectionUnit]:
 
     seen: set[str] = set()
     for position, match in enumerate(_BODY_CANDIDATE.finditer(body)):
-        value = match.group("value").strip('"')
-        if len(value) < 8 or value in seen:
+        quoted = match.group("quoted") is not None
+        raw = match.group("quoted") if quoted else match.group("value")
+        # The candidate pattern absorbs sentence punctuation, so `established.`
+        # and `received:` arrived as values in NR-0001's export.
+        value = raw.rstrip(_TRAILING_PUNCTUATION)
+        key = match.group("key")
+        if not is_body_candidate(key, match.group("sep"), quoted, value) or value in seen:
             continue
         seen.add(value)
-        key = match.group("key")
         units.append(
             DetectionUnit(
                 id=f"own-{index:06d}-body-{position:02d}",
