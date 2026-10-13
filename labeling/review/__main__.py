@@ -24,6 +24,7 @@ from pathlib import Path
 from datagen.loader import load_for_training
 
 from labeling.review import (
+    OWN_SHARE,
     QUEUE_CAP,
     QueueItem,
     append_decision,
@@ -167,11 +168,13 @@ def load_queue(path: Path) -> list[dict[str, object]]:
     ]
 
 
-def build(cap: int) -> int:
+def build(cap: int, own_share: float | None) -> int:
     """Build the review queue from the labelling outputs.
 
     Args:
         cap: Maximum queue length.
+        own_share: Fraction of the cap reserved for own-log units, or None for
+            §2.4 item 2's ordering applied literally. See `build_queue`.
 
     Returns:
         ``0`` on success, ``2`` when an input is missing.
@@ -218,7 +221,7 @@ def build(cap: int) -> int:
     rules.update({label.unit_id: label for label in read_labels(RULE_SYNTH)})
     units = list(load_for_training([OWN_UNITS, SYNTH_TRAIN]))
 
-    queue = build_queue(units, rules, teacher, credsweeper, cap=cap)
+    queue = build_queue(units, rules, teacher, credsweeper, cap=cap, own_share=own_share)
     QUEUE.parent.mkdir(parents=True, exist_ok=True)
     with QUEUE.open("w", encoding="utf-8", newline="\n") as handle:
         for item in queue:
@@ -365,11 +368,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--build", action="store_true", help="build the queue and stop")
     parser.add_argument("--summary", action="store_true", help="show what has been decided")
     parser.add_argument("--cap", type=int, default=QUEUE_CAP, help="maximum queue length")
+    parser.add_argument(
+        "--own-share",
+        type=float,
+        default=OWN_SHARE,
+        help="fraction of the queue reserved for own-log units",
+    )
+    parser.add_argument(
+        "--no-own-share",
+        action="store_true",
+        help="apply §2.4 item 2's ordering literally across both sources",
+    )
     parser.add_argument("--reviewer", default="frank", help="recorded against every decision")
     args = parser.parse_args(argv)
 
     if args.build:
-        return build(args.cap)
+        return build(args.cap, None if args.no_own_share else args.own_share)
     if args.summary:
         return summarise()
     return review(args.reviewer)

@@ -48,6 +48,12 @@ QUEUE_CAP = 500
 #: The threshold §2.3 applies to own-log units, on *recalibrated* probabilities.
 AUTO_ADOPT_THRESHOLD = 0.9
 
+#: Fraction of the queue reserved for own-log units. See `build_queue` for why
+#: a split is needed at all; the figure is an even division of the reviewer's
+#: time between review's two jobs — creating labels that do not exist, and
+#: finding generator defects.
+OWN_SHARE = 0.5
+
 
 def entropy(probabilities: dict[str, float]) -> float:
     """Shannon entropy of a distribution, in bits.
@@ -99,13 +105,32 @@ class QueueItem:
 
     @property
     def current_label(self) -> str:
-        """The label that stands if the reviewer accepts it unchanged.
+        """The label that stands if the reviewer presses Enter.
 
-        For a synthetic unit that is the generator's label, which §2.3 says
-        wins; for an own-log unit there is no prior label, so it is the
-        teacher's choice.
+        For a synthetic unit this is the generator's label, which §2.3 says
+        wins. For an own-log unit there is no prior label, so it is the best
+        available evidence — which is **not** simply the teacher's choice.
+
+        After recalibration at the fitted temperature of 7.39 the teacher's top
+        probability on these units is around 0.18 against a uniform 0.14: it is
+        barely distinguishable from having no opinion. Meanwhile CredSweeper
+        flagged none of the 2,692 own-log units and the rule layer fired on none
+        of them either. So when CredSweeper says the value is not a credential,
+        two independent systems say ``none`` and only the near-uninformative
+        teacher says otherwise, and ``none`` is what Enter should mean.
+
+        The alternative was defaulting to the teacher's argmax, which for
+        ``OrderId = 27`` is ``token`` at 0.180. That would make the single
+        easiest keystroke the wrong answer on the most common kind of unit in
+        the queue, over hundreds of decisions. The teacher's choice and
+        CredSweeper's verdict are both still on screen, so the reviewer is
+        overriding a visible default rather than a hidden one.
         """
-        return self.unit.label if self.unit.label is not None else self.teacher_choice
+        if self.unit.label is not None:
+            return self.unit.label
+        if self.credsweeper is False:
+            return "none"
+        return self.teacher_choice
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise the queue entry, values included.
@@ -198,6 +223,7 @@ def build_queue(
     teacher: dict[str, dict[str, float]],
     credsweeper: dict[str, bool] | None = None,
     cap: int = QUEUE_CAP,
+    own_share: float | None = OWN_SHARE,
 ) -> list[QueueItem]:
     """Build the review queue in review order.
 
@@ -207,10 +233,12 @@ def build_queue(
         teacher: Recalibrated distributions by unit id.
         credsweeper: CredSweeper opinions by unit id, for own-log units.
         cap: Maximum queue length (§2.4 item 4).
+        own_share: Fraction of the cap reserved for own-log units, or ``None``
+            for §2.4 item 2's ordering applied literally across both sources.
 
     Returns:
         At most ``cap`` items, disagreements first and then by descending
-        teacher entropy (§2.4 item 2).
+        teacher entropy (§2.4 item 2), within each source stratum.
 
     Raises:
         ValueError: If a unit has a teacher label but no rule label, which would
@@ -220,6 +248,23 @@ def build_queue(
     ordering rather than whatever came first in the corpus. Ties are broken by
     unit id so that two runs over the same data produce the same queue and a
     partly-reviewed queue does not reshuffle underneath the reviewer.
+
+    **Why the source stratum exists.** §2.4 item 2 says disagreements first,
+    then descending entropy. Applied literally to this corpus that fills the
+    entire 500-unit queue with synthetic disagreements and admits no own-log
+    unit at all: 86,460 units qualify for review and 83,768 of them — 96.9% —
+    are synthetic teacher/generator disagreements. But §2.3 gives review two
+    different jobs. On a synthetic unit the generator is right by construction,
+    so review confirms a label that is already correct and occasionally
+    uncovers a generator defect; it creates no new label. On an own-log unit
+    there is no label at all unless a human supplies one. Spending every slot
+    on the first job means the reviewer's two hours produce zero labels and the
+    own corpus contributes nothing to the training files.
+
+    So the cap is split between the sources, and ``own_share`` says how. This is
+    a deviation from §2.4 item 2's wording in service of §2.3's purpose, and it
+    is reported as such rather than applied quietly; ``own_share=None`` restores
+    the literal reading.
     """
     opinions = credsweeper or {}
     items: list[QueueItem] = []
@@ -248,8 +293,26 @@ def build_queue(
             )
         )
 
-    items.sort(key=lambda item: (not item.disagreement, -item.entropy, item.unit.id))
-    return items[:cap]
+    def ordering(item: QueueItem) -> tuple[bool, float, str]:
+        """§2.4 item 2: disagreements first, then descending teacher entropy."""
+        return (not item.disagreement, -item.entropy, item.unit.id)
+
+    if own_share is None:
+        items.sort(key=ordering)
+        return items[:cap]
+
+    own = sorted((item for item in items if item.unit.source == "own"), key=ordering)
+    other = sorted((item for item in items if item.unit.source != "own"), key=ordering)
+
+    # Reserve a share for the own logs, but never idle a slot: whatever one
+    # stratum cannot fill goes to the other.
+    reserved = min(len(own), round(cap * own_share))
+    chosen = own[:reserved] + other[: cap - reserved]
+    if len(chosen) < cap:
+        taken = {item.unit.id for item in chosen}
+        remainder = [item for item in own + other if item.unit.id not in taken]
+        chosen += sorted(remainder, key=ordering)[: cap - len(chosen)]
+    return sorted(chosen, key=lambda item: (item.unit.source != "own", ordering(item)))
 
 
 @dataclass(frozen=True, slots=True)

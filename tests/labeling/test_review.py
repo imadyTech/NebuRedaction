@@ -351,3 +351,117 @@ def test_statistics_report_verdicts_labels_and_notes() -> None:
     assert stats["by_verdict"] == {"confirmed": 1, "corrected": 1, "skipped": 1}
     assert stats["by_label"] == {"api_key": 1, "none": 1}
     assert stats["notes"] == [{"unit_id": "b", "note": "generator wrong"}]
+
+
+# --- the Enter default on own-log units --------------------------------------
+
+
+def own_item(credsweeper: bool | None, teacher_choice: str = "token") -> QueueItem:
+    """Build an own-log queue item with a given CredSweeper verdict."""
+    return QueueItem(
+        unit=unit("own-1", source="own", label=None),
+        rule=rule("own-1"),
+        teacher=distribution(teacher_choice, 0.18),
+        teacher_choice=teacher_choice,
+        credsweeper=credsweeper,
+        reason="own:below_threshold",
+        disagreement=False,
+        entropy=2.79,
+    )
+
+
+def test_enter_means_none_when_credsweeper_says_not_a_secret() -> None:
+    """The easiest keystroke must not be the wrong answer.
+
+    After recalibration the teacher's top probability on own-log units is about
+    0.18 against a uniform 0.14, so it is barely distinguishable from having no
+    opinion. CredSweeper flagged none of the 2,692 own-log units and the rule
+    layer fired on none either, so two independent systems say `none` and only
+    the near-uninformative teacher disagrees. Defaulting Enter to the teacher's
+    argmax would commit `token` for `OrderId = 27`, hundreds of times over.
+    """
+    assert own_item(credsweeper=False).current_label == "none"
+
+
+def test_enter_falls_back_to_the_teacher_when_credsweeper_agrees_it_is_a_secret() -> None:
+    """Enter falls back to the teacher when CredSweeper also sees a secret.
+
+    Then the two systems agree that something is there, and the teacher's class
+    is the only opinion available about which.
+    """
+    assert own_item(credsweeper=True).current_label == "token"
+
+
+def test_enter_falls_back_to_the_teacher_with_no_second_opinion() -> None:
+    """With nothing to corroborate, the default is not silently flipped."""
+    assert own_item(credsweeper=None).current_label == "token"
+
+
+def test_a_synthetic_units_default_is_always_the_generators_label() -> None:
+    """§2.3: the generator wins on synthetic data, whatever anyone else says."""
+    item = queue_item("api_key")
+    assert item.current_label == "api_key"
+
+
+# --- the source split --------------------------------------------------------
+
+
+def test_own_log_units_get_their_reserved_share_of_the_queue() -> None:
+    """§2.4 item 2's ordering applied literally admits none of them.
+
+    Measured on this corpus: 86,460 units qualify for review and 83,768 of them
+    — 96.9% — are synthetic disagreements, which sort first and fill the whole
+    500-unit cap. But review has two different jobs (§2.3): on a synthetic unit
+    it confirms a label that is already correct by construction, while on an
+    own-log unit it creates the only label that will ever exist. Spending every
+    slot on the first produces zero labels.
+    """
+    synthetic_units = [unit(f"s{index}", label="api_key") for index in range(100)]
+    own_units = [unit(f"own-{index}", source="own", label=None) for index in range(100)]
+    units = synthetic_units + own_units
+    rules = {u.id: rule(u.id) for u in units}
+    # Synthetic units disagree and so sort first; own units merely fall below
+    # the threshold.
+    teacher = {u.id: distribution("none", 0.15) for u in synthetic_units}
+    teacher.update({u.id: distribution("token", 0.40) for u in own_units})
+    credsweeper = {u.id: False for u in own_units}
+
+    queue = build_queue(units, rules, teacher, credsweeper, cap=20, own_share=0.5)
+    own_count = sum(1 for item in queue if item.unit.source == "own")
+    assert len(queue) == 20
+    assert own_count == 10
+
+
+def test_the_literal_ordering_is_still_available() -> None:
+    """The literal ordering remains available, and shows why it is a problem.
+
+    own_share=None restores §2.4 item 2's wording, under which the own-log
+    units are crowded out entirely.
+    """
+    synthetic_units = [unit(f"s{index}", label="api_key") for index in range(100)]
+    own_units = [unit(f"own-{index}", source="own", label=None) for index in range(100)]
+    units = synthetic_units + own_units
+    rules = {u.id: rule(u.id) for u in units}
+    teacher = {u.id: distribution("none", 0.15) for u in synthetic_units}
+    teacher.update({u.id: distribution("token", 0.40) for u in own_units})
+    credsweeper = {u.id: False for u in own_units}
+
+    queue = build_queue(units, rules, teacher, credsweeper, cap=20, own_share=None)
+    assert all(item.unit.source == "synth" for item in queue)
+
+
+def test_a_reserved_slot_is_never_left_idle() -> None:
+    """A reserved slot is never left idle.
+
+    If one stratum cannot fill its share, the other takes the remainder.
+    """
+    synthetic_units = [unit(f"s{index}", label="api_key") for index in range(100)]
+    own_units = [unit("own-0", source="own", label=None)]
+    units = synthetic_units + own_units
+    rules = {u.id: rule(u.id) for u in units}
+    teacher = {u.id: distribution("none", 0.15) for u in synthetic_units}
+    teacher["own-0"] = distribution("token", 0.40)
+
+    queue = build_queue(units, rules, teacher, {"own-0": False}, cap=20, own_share=0.5)
+    assert len(queue) == 20
+    assert sum(1 for item in queue if item.unit.source == "own") == 1
