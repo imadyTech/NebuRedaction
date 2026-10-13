@@ -9,6 +9,7 @@ import pytest
 from datagen.unit import DetectionUnit
 from eval import testsets, transforms
 from eval.baselines import available_systems, build
+from eval.baselines.credsweeper_adapter import CredSweeperBaseline
 from eval.baselines.rules import RuleBaseline, classify_key, split_key_words
 
 # Imported under an alias: pytest tries to collect any imported name starting
@@ -409,3 +410,36 @@ class TestTestsetLock:
     def test_labelled_only_drops_unlabelled_units(self):
         kept = testsets.labelled_only([unit("1", "k", "v", "api_key"), unit("2", "k", "v", None)])
         assert [u.id for u in kept] == ["1"]
+
+
+class TestCredSweeperChunking:
+    """NR-0004: CredSweeper's pool parallelises across files, not within one.
+
+    NR-0002 §9.10 recorded that `pool_count` was set to the machine's cores
+    while exactly one process did the work, because the adapter rendered every
+    unit into a single file. These tests pin the chunking that fixes it, and
+    the threshold that keeps it from making small runs slower.
+    """
+
+    def test_a_small_run_stays_on_one_file(self):
+        """Measured: 2,000 units took 5.0 s on one file and 5.9 s on ten."""
+        baseline = CredSweeperBaseline(pool_count=12)
+        assert baseline._chunk_count(10) == 1
+        assert baseline._chunk_count(1999) == 1
+
+    def test_a_large_run_is_chunked_up_to_the_pool_size(self):
+        """Measured: 20,000 units took 30.1 s on one file and 26.1 s on twelve."""
+        baseline = CredSweeperBaseline(pool_count=12)
+        assert baseline._chunk_count(20_000) == 10
+        assert baseline._chunk_count(49_568) == 12
+        assert baseline._chunk_count(10_000_000) == 12
+
+    def test_chunk_count_never_exceeds_the_pool(self):
+        """More files than workers adds spawn cost for no extra parallelism."""
+        for pool in (1, 2, 7, 12):
+            baseline = CredSweeperBaseline(pool_count=pool)
+            assert baseline._chunk_count(10**7) == pool
+
+    def test_an_empty_run_is_one_chunk(self):
+        """Zero units must not produce zero chunks and a division by zero."""
+        assert CredSweeperBaseline(pool_count=12)._chunk_count(0) == 1
