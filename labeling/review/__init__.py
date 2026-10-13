@@ -206,6 +206,28 @@ def classify_for_queue(
             return True, "own:no_second_opinion", "review"
         if should_redact(choice) != credsweeper:
             return True, "own:laya_credsweeper_disagree", "review"
+
+        # Three-system agreement on a negative (Frank's decision, 2026-10-14,
+        # amending §2.3 row 3). The original rule was "Laya and CredSweeper
+        # agree and the top recalibrated probability >= 0.9", and §9.8 measured
+        # why that cannot work: at the fitted temperature of 7.3852, zero of
+        # 157,256 records reach 0.9, so the rule never fires and all 2,692
+        # own-log units route to a 500-unit review queue.
+        #
+        # The replacement is not a lowered threshold — that would be weakening
+        # a control until it passes. It is a different and stronger kind of
+        # evidence: where the rule layer finds nothing, CredSweeper says the
+        # value is not a credential, and the teacher's own top class is `none`,
+        # three independent systems agree on the negative. On this corpus the
+        # first two are unanimous (0 of 2,692 flagged by either), so the
+        # teacher's near-uninformative opinion is corroborated rather than
+        # trusted alone.
+        #
+        # It applies to negatives only. A *positive* still needs a human: two
+        # systems agreeing that something is a secret does not say which class,
+        # and the teacher's class accuracy is 0.368.
+        if not should_redact(choice) and rule.label == "none":
+            return False, "own:three_system_agreement", "teacher_auto"
         if confidence < AUTO_ADOPT_THRESHOLD:
             return True, "own:below_threshold", "review"
         return False, "own:auto_adopted", "teacher_auto"

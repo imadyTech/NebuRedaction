@@ -85,17 +85,61 @@ def test_a_class_confusion_is_not_a_disagreement() -> None:
     assert reason == "synthetic:agreed"
 
 
-def test_own_log_agreement_above_the_threshold_is_auto_adopted() -> None:
-    """Row 3: two independent systems agree and the teacher is confident."""
+def test_own_log_negative_with_three_system_agreement_is_auto_adopted() -> None:
+    """Row 3 as amended by Frank on 2026-10-14.
+
+    The original rule was "Laya and CredSweeper agree and the top recalibrated
+    probability >= 0.9". §9.8 measured why it cannot work: at the fitted
+    temperature of 7.3852, zero of 157,256 records reach 0.9, so it never fires
+    and all 2,692 own-log units route to a 500-unit queue.
+
+    The replacement is not a lowered threshold — that would be weakening a
+    control until it passes — but a different kind of evidence: the rule layer
+    finds nothing, CredSweeper says not a credential, and the teacher's own top
+    class is `none`. Three independent systems agree on the negative, and on
+    this corpus the first two are unanimous (0 of 2,692 flagged by either).
+    """
     needs_review, reason, disposition = classify_for_queue(
         unit("o1", source="own", label=None),
-        rule("o1"),
-        distribution("none", 0.95),
+        rule("o1"),  # rule label is `none`
+        distribution("none", 0.18),  # well below 0.9, as every unit now is
         credsweeper=False,
     )
     assert needs_review is False
     assert disposition == "teacher_auto"
-    assert reason == "own:auto_adopted"
+    assert reason == "own:three_system_agreement"
+
+
+def test_three_system_agreement_does_not_apply_to_positives() -> None:
+    """A positive still needs a human.
+
+    Two systems agreeing that *something* is a secret does not say which of the
+    seven classes it is, and the teacher's top-class accuracy is 0.368.
+    """
+    needs_review, reason, _ = classify_for_queue(
+        unit("o1b", source="own", label=None),
+        rule("o1b"),
+        distribution("token", 0.18),
+        credsweeper=True,
+    )
+    assert needs_review is True
+    assert reason == "own:below_threshold"
+
+
+def test_a_rule_hit_blocks_three_system_agreement() -> None:
+    """If the rule layer fires, the three systems are not unanimous.
+
+    On this corpus it never does for own-log units, but the guard is what makes
+    the reason name honest.
+    """
+    needs_review, reason, _ = classify_for_queue(
+        unit("o1c", source="own", label=None),
+        RuleLabel("o1c", "password", LOW, "key:password", 0.0),
+        distribution("none", 0.18),
+        credsweeper=False,
+    )
+    assert needs_review is True
+    assert reason == "own:below_threshold"
 
 
 def test_own_log_disagreement_goes_to_review() -> None:
@@ -110,13 +154,13 @@ def test_own_log_disagreement_goes_to_review() -> None:
     assert reason == "own:laya_credsweeper_disagree"
 
 
-def test_own_log_below_the_threshold_goes_to_review() -> None:
-    """Row 4 again: agreement is not enough if the teacher is unsure."""
+def test_an_unsure_own_log_positive_goes_to_review() -> None:
+    """Row 4: agreement that it *is* a secret is not enough to pick a class."""
     needs_review, reason, _ = classify_for_queue(
         unit("o3", source="own", label=None),
         rule("o3"),
-        distribution("none", AUTO_ADOPT_THRESHOLD - 0.01),
-        credsweeper=False,
+        distribution("api_key", AUTO_ADOPT_THRESHOLD - 0.01),
+        credsweeper=True,
     )
     assert needs_review is True
     assert reason == "own:below_threshold"

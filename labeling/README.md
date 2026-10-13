@@ -39,7 +39,7 @@ again per record. A test asserts there is no other route into a label.
 |---|---|
 | synthetic, teacher agrees with the generator | take the **generator's** label, attach the teacher's soft label |
 | synthetic, they disagree | **review queue**. If review finds the generator wrong, fix the generator — NR-0001's code — and record the defect in the execution report. Do not edit the single label |
-| own log, Laya and CredSweeper agree and the top recalibrated probability ≥ 0.9 | **auto-adopt** |
+| own log **negative**: the rule layer finds nothing, CredSweeper says not a credential, and the teacher's top class is `none` | **auto-adopt** (three-system agreement) |
 | own log, anything else | **review queue** |
 
 Four things about this table are decisions rather than transcription, and each
@@ -70,13 +70,30 @@ independent systems to agree before a label is adopted without a human. The
 agreement is binary — both say "secret" or both say "not a secret" — because
 CredSweeper reports a credential score, not one of our seven classes.
 
-**The 0.9 threshold is applied to recalibrated probabilities, never raw ones.**
-NR-0000 measured the teacher labelling a user name as a password at 0.972
-confidence, so an uncalibrated 0.9 is not a 90% chance of being right and using
-it as one would auto-adopt exactly the confident false positives the project
-exists to prevent. §2.2 item 6 requires temperature recalibration on the
-synthetic validation split before any auto-adoption, and the threshold is
-applied after it.
+**Own-log negatives are adopted on three-system agreement, not on the
+teacher's confidence.** §2.3 originally said "Laya and CredSweeper agree and
+the top recalibrated probability ≥ 0.9", and NR-0003 §9.8 measured why that
+cannot work: the fitted temperature is 7.3852, and at it **zero of 157,256
+records reach 0.9**. The rule could never fire, so every one of the 2,692
+own-log units routed to a review queue capped at 500.
+
+Frank amended the rule on 2026-10-14. The replacement is deliberately not a
+lowered threshold — lowering a safety threshold until it fires is the failure
+mode, not the fix. It is a different and stronger kind of evidence: where the
+rule layer finds nothing, CredSweeper says the value is not a credential, and
+the teacher's own top class is `none`, three independent systems agree on the
+negative. On this corpus the first two are unanimous — neither flagged a single
+one of the 2,692 units — so the teacher's near-uninformative opinion is
+corroborated rather than trusted alone.
+
+It applies to **negatives only**. A positive still needs a human, because two
+systems agreeing that something is a secret does not say which of the seven
+classes it is, and the teacher's top-class accuracy is 0.368.
+
+Where a confidence threshold does still apply, it is applied to **recalibrated**
+probabilities and never raw ones. NR-0000 measured the teacher labelling a user
+name as a password at 0.972, and this run measured `OrderId = 29` scored `token`
+at 0.979, so an uncalibrated 0.9 is not a 90% chance of being right.
 
 ### What the own logs turned out to contribute
 
