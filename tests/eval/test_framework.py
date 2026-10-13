@@ -252,10 +252,22 @@ class TestRegistry:
             build("no-such-system")
 
     def test_placeholders_score_nothing_and_say_so(self, tiny_set):
-        output = build("laya").score(tiny_set.units)
+        """The student models are still placeholders; NR-0004 fills them."""
+        output = build("student-a").score(tiny_set.units)
         assert all(row == {} for row in output.scores)
         assert "placeholder" in output.notes["status"]
         assert "not a measurement" in output.notes["warning"]
+
+    def test_control_group_4_is_no_longer_a_placeholder(self):
+        """NR-0003 implemented it, as a replay of precomputed probabilities.
+
+        It cannot be built from a bare name, because the adapter needs the path
+        to the probabilities for the corpus being evaluated and guessing one
+        would silently evaluate the wrong file. The registry entry exists so
+        that `--systems laya` explains itself instead of raising a KeyError.
+        """
+        with pytest.raises(ValueError, match="control_group_4"):
+            build("laya")
 
 
 class TestDeterminism:

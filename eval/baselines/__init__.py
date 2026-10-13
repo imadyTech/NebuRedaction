@@ -8,13 +8,19 @@ have to touch the framework, and one is deliberately absent:
 ``rules``                    Control 1, implemented (NR-0002)
 ``rules+entropy``            Control 2, implemented (NR-0002)
 ``credsweeper``              Control 3, implemented (NR-0002)
-``laya``                     Control 4, placeholder — NR-0003
+``laya``                     Control 4, implemented (NR-0003), replayed
 ``student-a`` / ``-b`` / ``-c``  Control 6, placeholder — NR-0004
 SDLog                        Control 5, not present in v0.1
 ===========================  ==========================================
 
 SDLog has no placeholder on purpose. Plan §5.1 item 0 says it is not used in
 v0.1 at all, and an entry that could be invoked invites someone to invoke it.
+
+``laya`` is a *replay* system: the teacher's probabilities are precomputed by
+``labeling.teacher.label_corpus`` and read from a file, because scoring it live
+would add 45 minutes to every evaluation of the synthetic test set alone. It is
+registered without a path and must be constructed with one, so it is absent
+from ``DEFAULT_SYSTEMS`` and is run by ``eval.control_group_4``.
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from eval.baselines.credsweeper_adapter import CredSweeperBaseline
+from eval.baselines.laya_replay import LayaReplay
 from eval.baselines.placeholders import PlaceholderSystem
 from eval.baselines.rules import RuleBaseline
 from eval.baselines.rules_entropy import RulesPlusEntropy
@@ -29,6 +36,7 @@ from eval.baselines.rules_entropy import RulesPlusEntropy
 __all__ = [
     "REGISTRY",
     "CredSweeperBaseline",
+    "LayaReplay",
     "PlaceholderSystem",
     "RuleBaseline",
     "RulesPlusEntropy",
@@ -55,11 +63,11 @@ REGISTRY: dict[str, Callable[[], object]] = {
     "rules-values-only": _rules_values_only,
     "rules+entropy": RulesPlusEntropy,
     "credsweeper": CredSweeperBaseline,
-    "laya": lambda: PlaceholderSystem(
-        name="laya",
-        work_order="NR-0003",
-        reason="Laya zero-shot shares the teacher inference code, which NR-0003 builds.",
-    ),
+    # Control group 4 needs the path to its precomputed probabilities, which
+    # depends on which corpus is being evaluated, so it cannot be built from a
+    # bare name. `eval.control_group_4` constructs it; this entry exists so
+    # that `--systems laya` fails with an explanation rather than a KeyError.
+    "laya": lambda: _laya_needs_a_path(),
     "student-a": lambda: PlaceholderSystem(
         name="student-a",
         work_order="NR-0004",
@@ -76,6 +84,22 @@ REGISTRY: dict[str, Callable[[], object]] = {
         reason="Student model C (tiny char-level CNN).",
     ),
 }
+
+
+def _laya_needs_a_path() -> object:
+    """Explain that control group 4 is run by its own entry point.
+
+    Raises:
+        ValueError: Always. The replay adapter needs the path to the
+            precomputed probabilities for the corpus being evaluated, and
+            guessing one would silently evaluate the wrong file.
+    """
+    raise ValueError(
+        "control group 4 is replayed from precomputed probabilities, so it needs a "
+        "corpus-specific path. Run `python -m eval.control_group_4` instead of "
+        "`--systems laya`."
+    )
+
 
 #: The systems NR-0002 actually runs. The placeholders are registered so the
 #: interface is exercised and named, but running them produces no findings.
