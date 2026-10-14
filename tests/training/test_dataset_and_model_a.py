@@ -327,3 +327,75 @@ def test_the_label_order_is_the_projects() -> None:
         matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
     )
     assert model.labels == tuple(LABELS)
+
+
+# --- the end-to-end inference path -------------------------------------------
+
+
+def test_a_saved_model_round_trips(tmp_path: Path) -> None:
+    """Saving and loading must preserve the model exactly.
+
+    Inference loads from disk, so a round trip that lost a field would make
+    every shipped prediction differ from every measured one.
+    """
+    from training.model_a import load, save
+
+    matrix, intercepts = coefficients(width=len(DENSE_FEATURES) + MIN_BUCKETS)
+    scales = np.linspace(0.5, 2.0, len(DENSE_FEATURES)).astype(np.float32)
+    original = quantise(matrix, intercepts, MIN_BUCKETS, scales)
+    save(original, {"note": "test"}, tmp_path)
+
+    recovered = load(tmp_path)
+    assert recovered.stored_coefficients == original.stored_coefficients
+    assert recovered.size_bytes == original.size_bytes
+    assert recovered.labels == original.labels
+    assert recovered.buckets == original.buckets
+    np.testing.assert_array_equal(recovered.columns, original.columns)
+    np.testing.assert_array_equal(recovered.values, original.values)
+    np.testing.assert_allclose(recovered.dense_scales, original.dense_scales)
+
+
+def test_a_model_from_another_feature_version_is_refused(tmp_path: Path) -> None:
+    """It would be reading different columns, not merely be slightly stale.
+
+    The failure mode without this check is silent: the arrays load, the shapes
+    agree, and every prediction is nonsense.
+    """
+    from training.model_a import load, save
+
+    matrix, intercepts = coefficients(width=len(DENSE_FEATURES) + MIN_BUCKETS)
+    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), np.float32))
+    save(model, {}, tmp_path)
+
+    metadata_path = tmp_path / "model-a.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["feature_version"] = "0.9"
+    metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="feature version"):
+        load(tmp_path)
+
+
+def test_scoring_units_goes_through_the_whole_path(tmp_path: Path) -> None:
+    """Features extracted from a unit, scored by the stored int8 coefficients.
+
+    This is the path NR-0005 reimplements, so it is the one worth a test —
+    anything that only exists inside the trainer is not what ships.
+    """
+    from training.model_a import load, save, score_units
+
+    matrix, intercepts = coefficients(width=len(DENSE_FEATURES) + MIN_BUCKETS)
+    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), np.float32))
+    save(model, {}, tmp_path)
+
+    from datagen.unit import DetectionUnit
+
+    units = [
+        DetectionUnit(id="1", key="ApiKey", value="abc123def456", source="synth"),
+        DetectionUnit(
+            id="2", key="OrderId", value="29", source="own", template="Order 29 received"
+        ),
+    ]
+    probabilities = score_units(load(tmp_path), units)
+    assert probabilities.shape == (2, len(LABELS))
+    assert probabilities.sum(axis=1) == pytest.approx(np.ones(2))

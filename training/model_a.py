@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -39,7 +40,12 @@ from datagen.unit import LABELS
 from scipy import sparse
 from training.dataset import Dataset
 
-from neburedaction.features import DENSE_FEATURES, FEATURE_VERSION
+from neburedaction.features import (
+    DENSE_FEATURES,
+    FEATURE_VERSION,
+    dense_features,
+    hashed_features,
+)
 
 #: Smallest absolute coefficient kept. Below this a coefficient is noise that
 #: costs three bytes to store, and the gate is a size limit.
@@ -433,3 +439,86 @@ def dense_feature_report(model: QuantisedModel) -> list[dict[str, Any]]:
         }
         rows.append({"feature": name, "weights": weights})
     return rows
+
+
+def load(directory: Path) -> QuantisedModel:
+    """Load a saved model from disk.
+
+    Args:
+        directory: A directory written by :func:`save`.
+
+    Returns:
+        The model, ready to score with :meth:`QuantisedModel.predict_proba`.
+
+    Raises:
+        FileNotFoundError: If either file is missing.
+        ValueError: If the saved feature version is not the one this build of
+            the extractor produces. A model read under a different feature
+            definition is not slightly wrong, it is reading different columns —
+            so this refuses rather than scoring nonsense.
+    """
+    arrays_path = directory / "model-a.npz"
+    metadata_path = directory / "model-a.json"
+    for path in (arrays_path, metadata_path):
+        if not path.is_file():
+            raise FileNotFoundError(path)
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if metadata["feature_version"] != FEATURE_VERSION:
+        raise ValueError(
+            f"model was fitted under feature version {metadata['feature_version']!r} but this "
+            f"build produces {FEATURE_VERSION!r}; the columns would not line up"
+        )
+
+    with np.load(arrays_path) as arrays:
+        return QuantisedModel(
+            columns=arrays["columns"],
+            classes=arrays["classes"],
+            values=arrays["values"],
+            scales=arrays["scales"],
+            intercepts=arrays["intercepts"],
+            dense_scales=arrays["dense_scales"],
+            buckets=int(metadata["buckets"]),
+            feature_version=metadata["feature_version"],
+            labels=tuple(metadata["labels"]),
+        )
+
+
+def score_units(model: QuantisedModel, units: Sequence[Any]) -> np.ndarray:
+    """Score detection units directly, as inference would.
+
+    Args:
+        model: A loaded model.
+        units: Objects with ``key``, ``value``, ``template`` and ``scope``.
+
+    Returns:
+        Class probabilities, one row per unit.
+
+    This is the end-to-end path — features extracted from the unit, scored by
+    the stored int8 coefficients — so it exercises what NR-0005 will reimplement
+    rather than anything that only exists inside the trainer.
+    """
+    rows: list[dict[int, float]] = []
+    dense_rows: list[tuple[float, ...]] = []
+    for unit in units:
+        dense_rows.append(dense_features(unit.key, unit.value, unit.template, unit.scope))
+        rows.append(hashed_features(unit.key, unit.value, unit.template, unit.scope, model.buckets))
+
+    width = len(DENSE_FEATURES) + model.buckets
+    indices: list[int] = []
+    pointers: list[int] = [0]
+    data: list[float] = []
+    for dense_row, hashed_row in zip(dense_rows, rows, strict=True):
+        for column, number in enumerate(dense_row):
+            if number != 0.0:
+                indices.append(column)
+                data.append(number)
+        for bucket, weight in sorted(hashed_row.items()):
+            indices.append(len(DENSE_FEATURES) + bucket)
+            data.append(weight)
+        pointers.append(len(indices))
+
+    features = sparse.csr_matrix(
+        (np.array(data), np.array(indices), np.array(pointers)), shape=(len(units), width)
+    )
+    return model.predict_proba(features)
