@@ -86,7 +86,10 @@ def test_platt_is_two_numbers() -> None:
     """Platt is two numbers, which is why it wins a near-tie: NR-0005 ports it."""
     scores, truth = overconfident()
     platt = fit_platt(log_odds(scores), truth)
-    assert set(platt.to_dict()) == {"kind", "slope", "intercept"}
+    # `bytes` joined the serialisation when the selection rule started
+    # accounting for a calibration's own size.
+    assert set(platt.to_dict()) == {"kind", "slope", "intercept", "bytes"}
+    assert platt.size_bytes == 8
 
 
 def test_a_near_tie_goes_to_platt() -> None:
