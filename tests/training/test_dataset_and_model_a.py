@@ -12,11 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from scipy import sparse
-
 from datagen.unit import LABELS
-from neburedaction.features import DENSE_FEATURES, MIN_BUCKETS
-
+from scipy import sparse
 from training.dataset import Record, build, read_records, soft_target
 from training.model_a import (
     BYTES_PER_COEFFICIENT,
@@ -25,6 +22,8 @@ from training.model_a import (
     fit_dense_scales,
     quantise,
 )
+
+from neburedaction.features import DENSE_FEATURES, MIN_BUCKETS
 
 
 def record(
@@ -75,8 +74,11 @@ def test_a_negative_never_takes_a_soft_label() -> None:
 
 
 def test_a_positive_mixes_hard_and_teacher() -> None:
-    """The target is a mixture, not a replacement: the hard label keeps most of
-    the mass and stays the argmax."""
+    """A positive's target mixes the hard label with the teacher's.
+
+    It is a mixture and not a replacement: the hard label keeps most of the
+    mass and stays the argmax.
+    """
     target = soft_target(record(label="api_key", teacher=distribution("none", 0.9)), 0.3)
     assert target[LABELS.index("api_key")] == pytest.approx(0.7 + 0.3 * (0.1 / 6))
     assert int(np.argmax(target)) == LABELS.index("api_key")
@@ -84,17 +86,23 @@ def test_a_positive_mixes_hard_and_teacher() -> None:
 
 
 def test_weight_zero_is_the_supervised_control() -> None:
-    """The control the report compares distillation against: if distillation
-    does not beat it, the teacher added nothing."""
+    """A weight of zero is the supervised control.
+
+    It is what the report compares distillation against: if distillation does
+    not beat it, the teacher added nothing.
+    """
     target = soft_target(record(teacher=distribution("none", 0.95)), 0.0)
     assert target[LABELS.index("api_key")] == 1.0
     assert target.sum() == pytest.approx(1.0)
 
 
 def test_a_positive_without_a_teacher_opinion_is_kept_not_dropped() -> None:
-    """About 45,000 of the 200,000 training rows have none, because the
-    teacher's scope sampled the rule-high-confidence pool. Their hard labels
-    are still guaranteed by construction."""
+    """A positive with no teacher opinion is kept rather than dropped.
+
+    About 45,000 of the 200,000 training rows have none, because the teacher's
+    scope sampled the rule-high-confidence pool. Their hard labels are still
+    guaranteed by construction.
+    """
     target = soft_target(record(teacher=None), 0.3)
     assert target[LABELS.index("api_key")] == 1.0
 
@@ -122,10 +130,13 @@ def test_an_unknown_hard_label_is_refused() -> None:
 
 
 def test_a_record_without_a_provenance_is_refused(tmp_path: Path) -> None:
-    """NR-0003 writes meta.label_source on every record precisely so the
-    trainer can tell a construction-guaranteed label from a model's guess.
-    Training on the two as though they were alike is the difference between
-    distillation and self-training."""
+    """A record without a provenance is refused.
+
+    NR-0003 writes meta.label_source on every record precisely so the trainer
+    can tell a construction-guaranteed label from a model's guess. Training on
+    the two as though they were alike is the difference between distillation
+    and self-training.
+    """
     path = tmp_path / "train.jsonl"
     path.write_text(
         json.dumps({"id": "a", "key": "k", "value": "v", "source": "synth", "label": "none"})
@@ -140,8 +151,12 @@ def test_a_record_without_a_provenance_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_mask_is_computed_on_training_data_and_reused() -> None:
-    """Computing it from the validation split would let that split shape the
-    model's feature space — a leak, even though it looks like housekeeping."""
+    """The mask is computed on training data and reused for validation.
+
+    Computing it from the validation split would let that split shape the
+    model's feature space, which is a leak even though it looks like
+    housekeeping.
+    """
     training = [record(value=f"value-{index}") for index in range(4)]
     train_set = build(training, buckets=MIN_BUCKETS, min_bucket_occurrences=2)
 
@@ -200,8 +215,10 @@ def test_a_target_that_is_not_a_distribution_is_refused() -> None:
 
 
 def test_scaling_preserves_sparsity() -> None:
-    """Centring would make every zero non-zero: 200,000 by 16,415 float64s is
-    26 GB. Scaling without centring leaves zeros at zero."""
+    """Centring would make every zero non-zero: 200,000 by 16,415 float64s is 26 GB.
+
+    Scaling without centring leaves zeros at zero.
+    """
     features = sparse.csr_matrix(np.array([[2.0, 0.0, 0.0], [4.0, 0.0, 1.0]]))
     scales = np.array([0.5, 1.0, 1.0], dtype=np.float32)
     scaled = apply_dense_scaling(features, scales)
@@ -243,11 +260,16 @@ def coefficients(width: int = 40) -> tuple[np.ndarray, np.ndarray]:
 
 
 def test_quantisation_is_scaled_per_class() -> None:
-    """One class's coefficients can be orders of magnitude larger than
-    another's — private_key has unmistakable markers and password has none —
-    so a single global scale would quantise the small class to zeros."""
+    """Quantisation is scaled per class, not globally.
+
+    One class's coefficients can be orders of magnitude larger than another's:
+    private_key has unmistakable markers and password has none. A single global
+    scale would quantise the small class to zeros.
+    """
     matrix, intercepts = coefficients()
-    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32))
+    model = quantise(
+        matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
+    )
     assert model.scales[LABELS.index("private_key")] > model.scales[LABELS.index("password")]
     # The small class survives rather than vanishing.
     password_entries = model.classes == LABELS.index("password")
@@ -257,14 +279,18 @@ def test_quantisation_is_scaled_per_class() -> None:
 def test_coefficients_below_the_threshold_are_dropped() -> None:
     """They contribute nothing while costing three bytes each."""
     matrix, intercepts = coefficients()
-    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32))
+    model = quantise(
+        matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
+    )
     assert not (model.classes == LABELS.index("none")).any()
 
 
 def test_the_size_is_computed_from_the_stored_arrays() -> None:
     """G2 is judged on this number, so it is measured and not estimated."""
     matrix, intercepts = coefficients()
-    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32))
+    model = quantise(
+        matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
+    )
     expected = (
         model.stored_coefficients * BYTES_PER_COEFFICIENT
         + model.scales.nbytes
@@ -275,10 +301,15 @@ def test_the_size_is_computed_from_the_stored_arrays() -> None:
 
 
 def test_predictions_are_distributions() -> None:
-    """Scored from the stored int8 arrays, not from the scikit-learn estimator,
-    so what is measured is what would ship."""
+    """Predictions are proper distributions.
+
+    Scored from the stored int8 arrays rather than from the scikit-learn
+    estimator, so what is measured is what would ship.
+    """
     matrix, intercepts = coefficients(width=len(DENSE_FEATURES) + MIN_BUCKETS)
-    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32))
+    model = quantise(
+        matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
+    )
     features = sparse.csr_matrix(np.zeros((3, len(DENSE_FEATURES) + MIN_BUCKETS)))
     probabilities = model.predict_proba(features)
     assert probabilities.shape == (3, len(LABELS))
@@ -286,8 +317,13 @@ def test_predictions_are_distributions() -> None:
 
 
 def test_the_label_order_is_the_projects() -> None:
-    """scikit-learn orders coefficients by the classes it saw; a model stored
-    in that order would be silently misread by anything using LABELS."""
+    """The stored label order is the project's, not scikit-learn's.
+
+    scikit-learn orders coefficients by the classes it saw, and a model stored
+    in that order would be silently misread by anything using LABELS.
+    """
     matrix, intercepts = coefficients()
-    model = quantise(matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32))
+    model = quantise(
+        matrix, intercepts, MIN_BUCKETS, np.ones(len(DENSE_FEATURES), dtype=np.float32)
+    )
     assert model.labels == tuple(LABELS)
