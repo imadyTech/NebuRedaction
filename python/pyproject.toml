@@ -1,7 +1,7 @@
 [project]
 name = "neburedaction"
 version = "0.1.0"
-description = "Python reference implementation of the nebuRedaction secret-credential classifier. Pre-release, under construction."
+description = "Experimental Python reference implementation of the nebuRedaction secret-credential classifier. Not recommended for production: accuracy gate G2 is not met (0.804 recall at a 0.1% false-positive rate against a 0.834 bar), and the false-positive rate is several times its target on log formats it was not trained on. Defence in depth only. No model weights are bundled."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"

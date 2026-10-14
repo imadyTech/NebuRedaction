@@ -31,6 +31,12 @@ namespace imady.NebuRedaction.Tests;
 /// </remarks>
 public class ConsistencyTests
 {
+    private readonly ITestOutputHelper? _output;
+
+    /// <summary>Captures the runner's output sink.</summary>
+    /// <param name="output">Where to write the measured margin.</param>
+    public ConsistencyTests(ITestOutputHelper output) => _output = output;
+
     /// <summary>The tolerance plan §6.4 fixes. Not to be relaxed.</summary>
     private const double Tolerance = 1e-6;
 
@@ -168,7 +174,20 @@ public class ConsistencyTests
 
         // Stated as an assertion rather than only in the message so that a
         // tolerance quietly widened later still fails here.
-        Assert.True(worst <= Tolerance, $"worst |delta| was {worst:E3}");
+        Assert.True(worst <= Tolerance, $"worst |delta| was {worst:E3} at {worstSample}");
+
+        // Written out on success too, because "within tolerance" and "three
+        // orders of magnitude inside it" are different results and the report
+        // should be able to say which one this is.
+        _output?.WriteLine(string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} samples, {1} probability comparisons, worst |delta| {2:E3} at {3} "
+                + "(tolerance {4:E0})",
+            samples,
+            compared,
+            worst,
+            worstSample,
+            Tolerance));
     }
 
     private static void Add(List<string> failures, string failure)

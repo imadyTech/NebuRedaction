@@ -56,6 +56,19 @@ public class ClassifyBenchmarks
     /// <summary>A mid-length structural value.</summary>
     private const string HexValue = "9f86d081884c7d659a2feaa0c55ad015";
 
+    /// <summary>
+    /// The same value held as instance state, so <see cref="Mask"/> can be an
+    /// instance method without being one in name only.
+    /// </summary>
+    /// <remarks>
+    /// BenchmarkDotNet refuses static benchmark methods, and CA1822 requires a
+    /// method that touches no instance data to be static. EXECUTION.md §2
+    /// item 3 forbids silencing the analyzer, so the method is given instance
+    /// data to read rather than the warning being turned off. A field read is
+    /// a load, next to a SHA-256 of 32 bytes.
+    /// </remarks>
+    private readonly string _maskSubject = HexValue;
+
     /// <summary>A long value, where the value scanners do the most work.</summary>
     private static readonly string LongValue = new('x', 512);
 
@@ -98,9 +111,7 @@ public class ClassifyBenchmarks
     /// <summary>Masks a value.</summary>
     /// <returns>The mask, so the call is not elided.</returns>
     [Benchmark(Description = "Mask (SHA-256 of the value)")]
-#pragma warning disable CA1822 // BenchmarkDotNet refuses static benchmark methods.
-    public string Mask() => SecretDetector.Mask(HexValue);
-#pragma warning restore CA1822
+    public string Mask() => SecretDetector.Mask(_maskSubject);
 
     /// <summary>Walks up from the assembly to the repository root.</summary>
     /// <param name="relative">A repository-relative path.</param>
