@@ -346,3 +346,46 @@ def load_splits(
     train = build(train_records, buckets, None, soft_label_weight)
     validation = build(val_records, buckets, train.mask, soft_label_weight)
     return train, validation
+
+
+def featurise_units(units: Sequence[Any], buckets: int) -> sparse.csr_matrix:
+    """Featurise anything unit-shaped into the training matrix layout.
+
+    Args:
+        units: Objects with ``key``, ``value``, ``template`` and ``scope``.
+        buckets: Number of hash buckets, which must match the model's.
+
+    Returns:
+        A sparse row matrix of width ``len(DENSE_FEATURES) + buckets``.
+
+    The inference-side counterpart to :func:`build`, without the targets or the
+    mask. It exists so that model A's scoring, model B's scoring and the
+    evaluation adapters all construct features the same way: three
+    near-identical featurisers would be three chances for one of them to drift
+    from the normative extractor.
+
+    No mask is applied. The rare-bucket mask is a training-time device — it
+    zeroes buckets before fitting so the learned weight is zero — which is
+    exactly what keeps inference independent of which corpus a model was
+    trained on.
+    """
+    indices: list[int] = []
+    pointers: list[int] = [0]
+    data: list[float] = []
+    for unit in units:
+        template = getattr(unit, "template", None)
+        scope = getattr(unit, "scope", None)
+        for column, number in enumerate(dense_features(unit.key, unit.value, template, scope)):
+            if number != 0.0:
+                indices.append(column)
+                data.append(number)
+        hashed = hashed_features(unit.key, unit.value, template, scope, buckets)
+        for bucket, weight in sorted(hashed.items()):
+            indices.append(len(DENSE_FEATURES) + bucket)
+            data.append(weight)
+        pointers.append(len(indices))
+
+    return sparse.csr_matrix(
+        (np.array(data, dtype=np.float64), np.array(indices), np.array(pointers)),
+        shape=(len(units), len(DENSE_FEATURES) + buckets),
+    )

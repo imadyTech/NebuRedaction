@@ -43,8 +43,6 @@ from training.dataset import Dataset
 from neburedaction.features import (
     DENSE_FEATURES,
     FEATURE_VERSION,
-    dense_features,
-    hashed_features,
 )
 
 #: Smallest absolute coefficient kept. Below this a coefficient is noise that
@@ -495,30 +493,9 @@ def score_units(model: QuantisedModel, units: Sequence[Any]) -> np.ndarray:
         Class probabilities, one row per unit.
 
     This is the end-to-end path — features extracted from the unit, scored by
-    the stored int8 coefficients — so it exercises what NR-0005 will reimplement
-    rather than anything that only exists inside the trainer.
+    the stored int8 coefficients — so it exercises what NR-0005 will
+    reimplement rather than anything that only exists inside the trainer.
     """
-    rows: list[dict[int, float]] = []
-    dense_rows: list[tuple[float, ...]] = []
-    for unit in units:
-        dense_rows.append(dense_features(unit.key, unit.value, unit.template, unit.scope))
-        rows.append(hashed_features(unit.key, unit.value, unit.template, unit.scope, model.buckets))
+    from training.dataset import featurise_units
 
-    width = len(DENSE_FEATURES) + model.buckets
-    indices: list[int] = []
-    pointers: list[int] = [0]
-    data: list[float] = []
-    for dense_row, hashed_row in zip(dense_rows, rows, strict=True):
-        for column, number in enumerate(dense_row):
-            if number != 0.0:
-                indices.append(column)
-                data.append(number)
-        for bucket, weight in sorted(hashed_row.items()):
-            indices.append(len(DENSE_FEATURES) + bucket)
-            data.append(weight)
-        pointers.append(len(indices))
-
-    features = sparse.csr_matrix(
-        (np.array(data), np.array(indices), np.array(pointers)), shape=(len(units), width)
-    )
-    return model.predict_proba(features)
+    return model.predict_proba(featurise_units(units, model.buckets))
