@@ -30,6 +30,12 @@ teacher = [
 torch = [
     "torch>=2.9.0",
 ]
+train = [
+    "scikit-learn>=1.7.0",
+    "lightgbm>=4.6.0",
+    "numpy>=2.3.0",
+    "scipy>=1.15.0",
+]
 
 [tool.uv]
 default-groups = ["dev"]
