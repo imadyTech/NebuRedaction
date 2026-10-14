@@ -20,18 +20,21 @@ namespace imady.NebuRedaction.Tests;
 /// </remarks>
 public class SecretDetectorTests
 {
+    /// <summary>The committed fixture model these tests run against.</summary>
+    /// <remarks>
+    /// Deliberately the 581-byte fixture rather than the trained model. What
+    /// these tests assert is <b>semantics</b> — override precedence, the
+    /// key-name comparison, the ordering of the two thresholds, the mask's
+    /// construction — and none of that reads the weights. Pointing them at
+    /// `models/neburedaction-v0.1.0.nrm` only meant that in any clean checkout,
+    /// CI included, all of them skipped and §6 item 4's "the L1 options and
+    /// Mask have tests" was true of nobody's machine but this one.
+    /// </remarks>
     private static readonly string ModelPath =
-        FeatureVectorTests.RepositoryFile("models/neburedaction-v0.1.0.nrm");
+        FeatureVectorTests.RepositoryFile("tests/fixtures/fixture-model-v1.nrm");
 
-    private static SecretDetector Detector(SecretDetectorOptions? options = null)
-    {
-        if (!File.Exists(ModelPath))
-        {
-            Assert.Skip("neburedaction-v0.1.0.nrm is not in this checkout");
-        }
-
-        return SecretDetector.Load(ModelPath, options);
-    }
+    private static SecretDetector Detector(SecretDetectorOptions? options = null) =>
+        SecretDetector.Load(ModelPath, options);
 
     [Fact]
     public void MaskIsTheFirstFourHexCharactersOfSha256()
@@ -94,24 +97,46 @@ public class SecretDetectorTests
     [Fact]
     public void AnOverrideLeavesTheProbabilitiesUntouched()
     {
-        DetectionResult plain = Detector().Classify("comment", "ordinary text here");
-        DetectionResult overridden = Detector(new SecretDetectorOptions
+        // Which way the model votes is not the point and must not be assumed:
+        // the detector is asked first, then the override that contradicts it is
+        // applied. That keeps the assertion about the override rather than
+        // about the weights, so it holds for any model.
+        const string key = "comment";
+        const string value = "ordinary text here";
+
+        DetectionResult plain = Detector().Classify(key, value);
+        var contradicting = new SecretDetectorOptions();
+        if (plain.ShouldRedact)
         {
-            AlwaysRedactKeys = ["comment"],
-        }).Classify("comment", "ordinary text here");
+            contradicting.NeverRedactKeys = [key];
+        }
+        else
+        {
+            contradicting.AlwaysRedactKeys = [key];
+        }
+
+        DetectionResult overridden = Detector(contradicting).Classify(key, value);
 
         Assert.Equal(plain.Probabilities, overridden.Probabilities);
-        Assert.True(overridden.ShouldRedact);
-        Assert.False(plain.ShouldRedact);
+        Assert.Equal(plain.Score, overridden.Score);
+        Assert.NotEqual(plain.ShouldRedact, overridden.ShouldRedact);
+        Assert.Equal(RedactionReason.Model, plain.Reason);
+        Assert.NotEqual(RedactionReason.Model, overridden.Reason);
     }
 
     [Fact]
     public void NeverRedactSuppressesAModelDecision()
     {
+        // A value the fixture model does redact, so the override is actually
+        // suppressing something rather than agreeing with it.
+        const string key = "payload";
+        string value = new('x', 300);
+        Assert.True(Detector().Classify(key, value).ShouldRedact, "the premise no longer holds");
+
         DetectionResult result = Detector(new SecretDetectorOptions
         {
-            NeverRedactKeys = ["anykey"],
-        }).Classify("anykey", "AKIAIOSFODNN7EXAMPLE");
+            NeverRedactKeys = [key],
+        }).Classify(key, value);
 
         Assert.False(result.ShouldRedact);
         Assert.Equal(RedactionReason.NeverRedactKey, result.Reason);
@@ -142,11 +167,6 @@ public class SecretDetectorTests
     [Fact]
     public void LoadingFromAStreamMatchesLoadingFromAPath()
     {
-        if (!File.Exists(ModelPath))
-        {
-            Assert.Skip("neburedaction-v0.1.0.nrm is not in this checkout");
-        }
-
         using FileStream stream = File.OpenRead(ModelPath);
         SecretDetector fromStream = SecretDetector.Load(stream);
 
