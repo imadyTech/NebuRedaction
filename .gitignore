@@ -2,6 +2,12 @@
 data/
 runs/
 
+# BenchmarkDotNet writes its logs, csv and html per run. The numbers that
+# matter are transcribed into docs/reports/, where they can carry the machine
+# and the runtime they were measured on; the raw artifacts are a run record,
+# like runs/ above.
+dotnet/BenchmarkDotNet.Artifacts/
+
 # --- model artifacts (release artifacts are handled separately) ---
 *.nrm
 

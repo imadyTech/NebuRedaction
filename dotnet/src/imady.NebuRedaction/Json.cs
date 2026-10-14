@@ -291,7 +291,7 @@ internal sealed class JsonValue
     private readonly bool _boolean;
 
     private JsonValue(
-        JsonValueKind kind,
+        NrmJsonKind kind,
         Dictionary<string, JsonValue>? members = null,
         List<JsonValue>? items = null,
         string? text = null,
@@ -307,24 +307,24 @@ internal sealed class JsonValue
     }
 
     /// <summary>The null value.</summary>
-    internal static JsonValue Null { get; } = new(JsonValueKind.Null);
+    internal static JsonValue Null { get; } = new(NrmJsonKind.Null);
 
     /// <summary>What kind of value this is.</summary>
-    internal JsonValueKind Kind { get; }
+    internal NrmJsonKind Kind { get; }
 
     internal static JsonValue FromObject(Dictionary<string, JsonValue> members) =>
-        new(JsonValueKind.Object, members: members);
+        new(NrmJsonKind.Object, members: members);
 
     internal static JsonValue FromArray(List<JsonValue> items) =>
-        new(JsonValueKind.Array, items: items);
+        new(NrmJsonKind.Array, items: items);
 
-    internal static JsonValue FromString(string text) => new(JsonValueKind.String, text: text);
+    internal static JsonValue FromString(string text) => new(NrmJsonKind.String, text: text);
 
     internal static JsonValue FromNumber(double number) =>
-        new(JsonValueKind.Number, number: number);
+        new(NrmJsonKind.Number, number: number);
 
     internal static JsonValue FromBool(bool boolean) =>
-        new(JsonValueKind.Bool, boolean: boolean);
+        new(NrmJsonKind.Bool, boolean: boolean);
 
     /// <summary>The array's items.</summary>
     internal IReadOnlyList<JsonValue> Items =>
@@ -342,7 +342,7 @@ internal sealed class JsonValue
     internal string RequiredString(string name)
     {
         JsonValue? value = Member(name);
-        if (value is null || value.Kind != JsonValueKind.String)
+        if (value is null || value.Kind != NrmJsonKind.String)
         {
             throw new NrmException($"metadata is missing the string field '{name}'");
         }
@@ -354,14 +354,14 @@ internal sealed class JsonValue
     internal string? OptionalString(string name)
     {
         JsonValue? value = Member(name);
-        return value is not null && value.Kind == JsonValueKind.String ? value._text : null;
+        return value is not null && value.Kind == NrmJsonKind.String ? value._text : null;
     }
 
     /// <summary>Reads a member as a required number.</summary>
     internal double RequiredNumber(string name)
     {
         JsonValue? value = Member(name);
-        if (value is null || value.Kind != JsonValueKind.Number)
+        if (value is null || value.Kind != NrmJsonKind.Number)
         {
             throw new NrmException($"metadata is missing the numeric field '{name}'");
         }
@@ -373,7 +373,7 @@ internal sealed class JsonValue
     internal JsonValue RequiredObject(string name)
     {
         JsonValue? value = Member(name);
-        if (value is null || value.Kind != JsonValueKind.Object)
+        if (value is null || value.Kind != NrmJsonKind.Object)
         {
             throw new NrmException($"metadata is missing the object field '{name}'");
         }
@@ -385,7 +385,7 @@ internal sealed class JsonValue
     internal JsonValue RequiredArray(string name)
     {
         JsonValue? value = Member(name);
-        if (value is null || value.Kind != JsonValueKind.Array)
+        if (value is null || value.Kind != NrmJsonKind.Array)
         {
             throw new NrmException($"metadata is missing the array field '{name}'");
         }
@@ -395,25 +395,30 @@ internal sealed class JsonValue
 
     /// <summary>This value as a string.</summary>
     internal string AsString() =>
-        Kind == JsonValueKind.String
+        Kind == NrmJsonKind.String
             ? _text!
             : throw new NrmException("expected a string in the metadata");
 
     /// <summary>This value as a number.</summary>
     internal double AsNumber() =>
-        Kind == JsonValueKind.Number
+        Kind == NrmJsonKind.Number
             ? _number
             : throw new NrmException("expected a number in the metadata");
 
     /// <summary>This value as a boolean.</summary>
     internal bool AsBool() =>
-        Kind == JsonValueKind.Bool
+        Kind == NrmJsonKind.Bool
             ? _boolean
             : throw new NrmException("expected a boolean in the metadata");
 }
 
 /// <summary>The kinds of JSON value this reader produces.</summary>
-internal enum JsonValueKind
+/// <remarks>
+/// Named <c>NrmJsonKind</c> rather than <c>JsonValueKind</c> so it does not
+/// collide with <c>System.Text.Json.JsonValueKind</c> in any assembly that can
+/// see this one's internals — the test assembly uses both.
+/// </remarks>
+internal enum NrmJsonKind
 {
     /// <summary>A JSON object.</summary>
     Object,

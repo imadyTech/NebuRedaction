@@ -99,6 +99,15 @@ public sealed class NrmModel
     private readonly NrmTree[] _trees;
     private readonly int[] _bucketIds;
     private readonly int _denseFeatureCount;
+
+    /// <summary>Bucket index to the projected vector's column for that bucket.</summary>
+    /// <remarks>
+    /// Built once at load so the hot path can decide in one lookup whether an
+    /// n-gram lands in a bucket any tree reads, instead of accumulating all
+    /// 32,768 buckets and discarding every one but 256 of them. Bucket ids are
+    /// distinct, so each maps to exactly one column.
+    /// </remarks>
+    private readonly Dictionary<int, int> _columnOfBucket;
     private readonly int _noneIndex;
 
     private NrmModel(
@@ -117,6 +126,11 @@ public sealed class NrmModel
         _trees = trees;
         _denseFeatureCount = denseFeatureCount;
         _bucketIds = bucketIds;
+        _columnOfBucket = new Dictionary<int, int>(bucketIds.Length);
+        for (int index = 0; index < bucketIds.Length; index++)
+        {
+            _columnOfBucket[bucketIds[index]] = denseFeatureCount + index;
+        }
         BucketCount = bucketCount;
         CalibrationSlope = slope;
         CalibrationIntercept = intercept;
@@ -339,16 +353,17 @@ public sealed class NrmModel
     public double[] Project(string key, string value, string? template, string? scope)
     {
         double[] dense = Features.Dense(key, value, template, scope);
-        Dictionary<int, double> hashed = Features.Hashed(key, value, template, scope, BucketCount);
 
         var projected = new double[_denseFeatureCount + _bucketIds.Length];
         int copy = Math.Min(_denseFeatureCount, dense.Length);
         Array.Copy(dense, projected, copy);
-        for (int index = 0; index < _bucketIds.Length; index++)
-        {
-            projected[_denseFeatureCount + index] =
-                hashed.TryGetValue(_bucketIds[index], out double weight) ? weight : 0.0;
-        }
+
+        // Accumulates straight into the columns that exist, rather than
+        // building the full 32,768-bucket map and reading 256 of it. Exact,
+        // because the hashed features are not normalised; see
+        // Features.AccumulateHashed.
+        Features.AccumulateHashed(
+            key, value, template, scope, BucketCount, _columnOfBucket, projected);
 
         return projected;
     }

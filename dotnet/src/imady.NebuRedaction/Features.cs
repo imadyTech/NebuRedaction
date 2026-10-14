@@ -524,6 +524,161 @@ public static class Features
         return accumulated;
     }
 
+    /// <summary>FNV-1a state after consuming a namespace and its separator.</summary>
+    /// <param name="ns">One of the namespace constants.</param>
+    /// <returns>The intermediate hash state.</returns>
+    /// <remarks>
+    /// FNV-1a is a streaming hash, so hashing the namespace, a U+001F
+    /// separator and the token as one string and
+    /// hashing the namespace, the separator and then the token give the same
+    /// result by construction. Precomputing the first part is therefore exact,
+    /// not an approximation, and it is what lets the hot path hash an n-gram
+    /// without building that concatenated string.
+    /// </remarks>
+    internal static uint NamespaceSeed(string ns)
+    {
+        uint value = FnvOffset;
+        foreach (byte b in Encoding.UTF8.GetBytes(ns))
+        {
+            value ^= b;
+            value *= FnvPrime;
+        }
+
+        value ^= 0x1F;
+        value *= FnvPrime;
+        return value;
+    }
+
+    /// <summary>Maps a token held in a span to a bucket and a sign.</summary>
+    /// <param name="seed">A <see cref="NamespaceSeed"/> result.</param>
+    /// <param name="token">The token's characters.</param>
+    /// <param name="bucketMask"><c>buckets - 1</c>, validated by the caller.</param>
+    /// <param name="sign">Receives -1 or +1.</param>
+    /// <returns>The bucket index.</returns>
+    /// <remarks>
+    /// Equivalent to <see cref="BucketOf"/> with the same namespace and token,
+    /// and allocation-free: the UTF-8 bytes go into a stack buffer sized for
+    /// the longest token this extractor produces.
+    /// </remarks>
+    internal static int BucketOfSpan(
+        uint seed, ReadOnlySpan<char> token, int bucketMask, out double sign)
+    {
+        // Four characters is the longest n-gram, and UTF-8 needs at most four
+        // bytes per character, so 16 bytes covers every token including one
+        // made entirely of surrogate pairs. Longer tokens (key and template
+        // words) take the heap path below.
+        uint value = seed;
+        if (token.Length <= 4)
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            int written = Encoding.UTF8.GetBytes(token, buffer);
+            for (int index = 0; index < written; index++)
+            {
+                value ^= buffer[index];
+                value *= FnvPrime;
+            }
+        }
+        else
+        {
+            foreach (byte b in Encoding.UTF8.GetBytes(token.ToString()))
+            {
+                value ^= b;
+                value *= FnvPrime;
+            }
+        }
+
+        sign = ((value >> 31) & 1) == 1 ? 1.0 : -1.0;
+        return (int)(value & (uint)bucketMask);
+    }
+
+    /// <summary>
+    /// Accumulates the hashed features for one unit directly into a projected
+    /// vector, skipping the buckets the model does not use.
+    /// </summary>
+    /// <param name="key">The attribute name.</param>
+    /// <param name="value">The attribute value.</param>
+    /// <param name="template">The message template, if any.</param>
+    /// <param name="scope">The scope name, if any.</param>
+    /// <param name="buckets">Bucket count.</param>
+    /// <param name="columnOfBucket">Bucket index to destination column.</param>
+    /// <param name="destination">The vector to accumulate into.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// If <paramref name="buckets"/> is outside plan §4.2's range or is not a
+    /// power of two.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This exists because <see cref="Hashed"/> allocates: a 512-character
+    /// value has 2,042 n-grams, and building a substring, a namespaced
+    /// concatenation and a UTF-8 byte array for each one cost about 200 KB a
+    /// call. The measured model reads 256 buckets of 32,768, so the dictionary
+    /// those allocations filled was discarded almost entirely.
+    /// </para>
+    /// <para>
+    /// Dropping the unused buckets is exact rather than an approximation only
+    /// because the hashed features are not normalised — each bucket's signed
+    /// count is independent of the others, so a bucket no tree reads cannot
+    /// affect one that is read. If a later feature version normalises them,
+    /// this shortcut stops being valid and must go back through
+    /// <see cref="Hashed"/>.
+    /// </para>
+    /// </remarks>
+    internal static void AccumulateHashed(
+        string key,
+        string value,
+        string? template,
+        string? scope,
+        int buckets,
+        Dictionary<int, int> columnOfBucket,
+        double[] destination)
+    {
+        if (buckets < MinBuckets || buckets > MaxBuckets || (buckets & (buckets - 1)) != 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(buckets),
+                buckets,
+                $"buckets must be a power of two in [{MinBuckets}, {MaxBuckets}]");
+        }
+
+        int mask = buckets - 1;
+        uint valueSeed = NamespaceSeed(ValueNamespace);
+        uint keySeed = NamespaceSeed(KeyNamespace);
+        uint contextSeed = NamespaceSeed(ContextNamespace);
+
+        void Add(uint seed, ReadOnlySpan<char> token)
+        {
+            int bucket = BucketOfSpan(seed, token, mask, out double sign);
+            if (columnOfBucket.TryGetValue(bucket, out int column))
+            {
+                destination[column] += sign;
+            }
+        }
+
+        ReadOnlySpan<char> characters = value.AsSpan();
+        for (int size = 1; size <= 4; size++)
+        {
+            for (int start = 0; start + size <= characters.Length; start++)
+            {
+                Add(valueSeed, characters.Slice(start, size));
+            }
+        }
+
+        foreach (string word in SplitKeyWords(key))
+        {
+            Add(keySeed, word.AsSpan());
+        }
+
+        foreach (string word in TemplateWords(template))
+        {
+            Add(contextSeed, word.AsSpan());
+        }
+
+        foreach (string word in SplitKeyWords(scope ?? string.Empty))
+        {
+            Add(contextSeed, word.AsSpan());
+        }
+    }
+
     /// <summary>Base-2 logarithm, available on both target frameworks.</summary>
     /// <param name="value">A positive number.</param>
     /// <returns>Its base-2 logarithm.</returns>

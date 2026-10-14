@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>imady.NebuRedaction.Benchmarks</RootNamespace>
+    <AssemblyName>imady.NebuRedaction.Benchmarks</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- BenchmarkDotNet needs a release build to measure anything meaningful,
+         and a debug run silently reports numbers several times too slow. -->
+    <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/imady.NebuRedaction/imady.NebuRedaction.csproj" />
+  </ItemGroup>
+
+</Project>

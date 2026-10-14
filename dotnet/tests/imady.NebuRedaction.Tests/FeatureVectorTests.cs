@@ -189,6 +189,80 @@ public class FeatureVectorTests
         Assert.Equal(3, new HashSet<int> { key, context, value }.Count);
     }
 
+    [Fact]
+    public void TheAllocationFreePathAgreesWithTheReferencePath()
+    {
+        // `Project` accumulates only the buckets a model reads, instead of
+        // building the whole map and discarding most of it. That is exact only
+        // because the hashed features are not normalised, so it is worth
+        // proving rather than asserting: for every committed case, the two
+        // paths must produce the same value in every column.
+        const int buckets = 1 << 15;
+        var columns = new Dictionary<int, int>();
+        for (int bucket = 0; bucket < buckets; bucket++)
+        {
+            columns[bucket] = bucket;
+        }
+
+        foreach (JsonElement testCase in Vectors.RootElement.GetProperty("cases").EnumerateArray())
+        {
+            string name = testCase.GetProperty("name").GetString()!;
+            JsonElement input = testCase.GetProperty("input");
+            string key = input.GetProperty("key").GetString()!;
+            string value = input.GetProperty("value").GetString()!;
+            string? template = Text(input, "template");
+            string? scope = Text(input, "scope");
+
+            Dictionary<int, double> reference =
+                Features.Hashed(key, value, template, scope, buckets);
+            var accumulated = new double[buckets];
+            Features.AccumulateHashed(
+                key, value, template, scope, buckets, columns, accumulated);
+
+            foreach (KeyValuePair<int, double> entry in reference)
+            {
+                Assert.Equal(entry.Value, accumulated[entry.Key]);
+            }
+
+            double total = 0.0;
+            foreach (double weight in accumulated)
+            {
+                total += Math.Abs(weight);
+            }
+
+            double referenceTotal = 0.0;
+            foreach (double weight in reference.Values)
+            {
+                referenceTotal += Math.Abs(weight);
+            }
+
+            // Catches a bucket the fast path sets and the reference does not,
+            // which the loop above cannot see.
+            Assert.Equal(referenceTotal, total);
+            Assert.True(total >= 0.0, name);
+        }
+    }
+
+    [Fact]
+    public void TheSpanHashMatchesTheStringHash()
+    {
+        // The namespace seed is only exact because FNV-1a is streaming.
+        foreach (string token in new[] { "a", "ab", "abcd", "token", "", "键名" })
+        {
+            foreach (string ns in new[]
+            {
+                Features.ValueNamespace, Features.KeyNamespace, Features.ContextNamespace,
+            })
+            {
+                int expected = Features.BucketOf(token, ns, 1 << 15, out double expectedSign);
+                int actual = Features.BucketOfSpan(
+                    Features.NamespaceSeed(ns), token.AsSpan(), (1 << 15) - 1, out double sign);
+                Assert.Equal(expected, actual);
+                Assert.Equal(expectedSign, sign);
+            }
+        }
+    }
+
     private static string? Text(JsonElement element, string name) =>
         element.TryGetProperty(name, out JsonElement property)
             && property.ValueKind != JsonValueKind.Null

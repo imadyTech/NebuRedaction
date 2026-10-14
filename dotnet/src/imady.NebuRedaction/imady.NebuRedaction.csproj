@@ -11,4 +11,12 @@
     <PackageTags>logging;redaction;secrets;credentials;privacy;machine-learning</PackageTags>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The allocation-free feature path is internal because it is an
+         implementation detail of Project(), but its equivalence to the public
+         Hashed() is exactly what has to be proved rather than assumed, so the
+         tests need to reach both. -->
+    <InternalsVisibleTo Include="imady.NebuRedaction.Tests" />
+  </ItemGroup>
+
 </Project>

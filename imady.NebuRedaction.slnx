@@ -2,6 +2,9 @@
   <Folder Name="/src/">
     <Project Path="dotnet/src/imady.NebuRedaction/imady.NebuRedaction.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="dotnet/benchmarks/imady.NebuRedaction.Benchmarks/imady.NebuRedaction.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="dotnet/tests/imady.NebuRedaction.Tests/imady.NebuRedaction.Tests.csproj" />
   </Folder>
