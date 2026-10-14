@@ -7,8 +7,13 @@ Usage:
 
 Hyperparameters are selected on the **validation** split and nowhere else
 (§2 item 2). The training split is only ever fitted on, and the test split is
-not touched by this module at all — G2 is judged by ``eval.run``, after the
-model is fixed.
+not touched by this module at all — G2 is judged by ``eval.students``, after
+the model is fixed.
+
+Every fit is written to its own directory under the run, not only the one that
+wins. A fit costs hours and a selection metric costs nothing, so when the
+metric turns out to be wrong — which happened here, to a tie-breaking rule —
+re-ranking should not mean refitting.
 
 **Convergence is not optional for an L1 fit.** Measured on 5,000 rows, with
 everything else held constant:
@@ -188,11 +193,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         selection = evaluate(model, validation_set)
         within_budget = model.size_bytes <= SIZE_LIMIT_BYTES
+
+        # **Every fit is saved, not only the winner.** This exists because of a
+        # concrete incident: a grid ran for hours, and a bug was then found in
+        # the selection metric itself — the threshold search broke score ties
+        # optimistically, overstating recall. The models were fine; only the
+        # number used to rank them was wrong. With just the winner on disk,
+        # re-ranking under the corrected metric meant refitting everything from
+        # scratch. A fit is expensive and a metric is cheap, so the expensive
+        # thing is the one to keep.
+        fit_directory = stamped / f"C-{penalty_strength}"
+        fit_paths = save(model, diagnostics, fit_directory)
         record = {
             "C": penalty_strength,
             "within_size_limit": within_budget,
             "diagnostics": diagnostics,
             "validation": selection,
+            "paths": {name: str(path) for name, path in fit_paths.items()},
         }
         results.append(record)
 
@@ -244,6 +261,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         recall, model, record = best
         summary["selected"] = {"C": record["C"], "recall_at_0.001": recall}
+        # Also written at the run root, so "the selected model" has one
+        # location, while every fit stays available under its own C for
+        # re-ranking.
         paths = save(model, record["diagnostics"], stamped)
         summary["model_paths"] = {name: str(path) for name, path in paths.items()}
         summary["dense_feature_weights"] = dense_feature_report(model)
