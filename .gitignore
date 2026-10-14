@@ -11,6 +11,13 @@ dotnet/BenchmarkDotNet.Artifacts/
 # --- model artifacts (release artifacts are handled separately) ---
 *.nrm
 
+# One exception: a hand-built 581-byte fixture model, not trained on anything,
+# holding no credential and no data derived from one. It is committed because
+# CI has no trained model and no corpus, so without it the binary reader, the
+# tree walk and the calibration — the parts most likely to differ between
+# Windows and Linux — would be covered on neither.
+!tests/fixtures/fixture-model-v1.nrm
+
 # --- credential-shaped test fixtures ---
 #
 # The generator produces format-correct vendor credentials on purpose, so a

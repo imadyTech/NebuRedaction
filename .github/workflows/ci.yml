@@ -37,6 +37,14 @@ jobs:
       - name: Build
         run: dotnet build imady.NebuRedaction.slnx --configuration Release
 
+      # Covers §2.6 item 1 as far as it can be covered. The .NET suite runs on
+      # both platforms, and the cross-platform parity it proves is the fixture
+      # model's: §7 decided not to commit the trained model and `.gitignore`
+      # excludes `data/`, so a runner has neither the model nor the corpus and
+      # the real G3 comparison skips here. `tests/fixtures/fixture-model-v1.nrm`
+      # is the 581-byte stand-in that keeps the binary reader, the tree walk and
+      # the Platt calibration from going untested on Linux. Full G3, over 2,400
+      # real samples, stays a local gate and the §9 report says so.
       - name: Test
         run: dotnet test imady.NebuRedaction.slnx --configuration Release --no-build
 
@@ -54,7 +62,9 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --group dev --group datagen --group eval --locked
+        # `train` is NR-0004's leftover (§2.6 item 2): without it `tests/training/`
+        # cannot import the trainers and was silently not being run.
+        run: uv sync --group dev --group datagen --group eval --group train --locked
 
       - name: Lint
         run: uv run ruff check .
@@ -64,6 +74,12 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+      # Run explicitly as well as under the sweep above, so that a future
+      # `testpaths` change cannot drop them without this step failing. The whole
+      # directory runs; no subset was needed.
+      - name: Training tests (NR-0004 leftover, §2.6 item 2)
+        run: uv run pytest tests/training/ -v
 
       # No fixture corpus is committed: the generator emits format-correct vendor
       # credentials, which GitHub's push protection blocks — correctly. Generate
