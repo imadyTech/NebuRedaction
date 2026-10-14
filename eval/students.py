@@ -164,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="calibration JSON; defaults to calibration.json inside --model-dir",
     )
-    parser.add_argument("--variant", default="a", choices=["a", "b"])
+    parser.add_argument("--variant", default="a", choices=["a", "b", "c"])
     parser.add_argument(
         "--with-baselines",
         action="store_true",

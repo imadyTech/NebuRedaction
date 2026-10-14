@@ -83,7 +83,7 @@ class StudentSystem:
         name: System name in reports.
         kind: ``continuous``.
         calibration_path: Optional calibration JSON.
-        variant: ``a`` or ``b``, selecting which loader to use.
+        variant: ``a``, ``b`` or ``c``, selecting which loader to use.
     """
 
     model_dir: Path
@@ -131,6 +131,29 @@ class StudentSystem:
                 feature_version=FEATURE_VERSION,
                 labels=tuple(saved["labels"]),
             )
+        elif self.variant == "c":
+            from training.model_c import CharCnnModel
+
+            from neburedaction.features import FEATURE_VERSION
+
+            arrays = self.model_dir / "model-c.npz"
+            metadata = self.model_dir / "model-c.json"
+            for path in (arrays, metadata):
+                if not path.is_file():
+                    raise FileNotFoundError(path)
+            saved = json.loads(metadata.read_text(encoding="utf-8"))
+            with np.load(arrays) as loaded:
+                state = {name: loaded[name] for name in loaded.files}
+            self._model = CharCnnModel(
+                state=state,
+                embedding_dim=int(saved["embedding_dim"]),
+                channels=int(saved["channels"]),
+                kernel_sizes=tuple(saved["kernel_sizes"]),
+                max_length=int(saved["max_length"]),
+                parameters=int(saved["parameters"]),
+                feature_version=FEATURE_VERSION,
+                labels=tuple(saved["labels"]),
+            )
         else:
             raise ValueError(f"unknown student variant {self.variant!r}")
 
@@ -146,6 +169,14 @@ class StudentSystem:
             from training.model_a import score_units
 
             return score_units(self._model, units)
+
+        if self.variant == "c":
+            # C reads the value's characters and nothing else, which is the
+            # whole point of it as a control: no key name, no template, no
+            # engineered feature.
+            from training.model_c import predict_proba as predict_c
+
+            return predict_c(self._model, [unit.value for unit in units])
 
         from training.dataset import featurise_units
         from training.model_b import predict_proba
