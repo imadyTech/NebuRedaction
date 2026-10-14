@@ -24,9 +24,6 @@ import numpy as np
 from datagen.unit import LABELS
 from training.calibration import fit, log_odds, save
 from training.dataset import VAL_LABELS, read_records
-from training.model_a import load, score_units
-
-from neburedaction.features import DEFAULT_BUCKETS
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 
@@ -42,6 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-dir", type=Path, required=True)
+    parser.add_argument("--variant", default="a", choices=["a", "b", "c"])
     parser.add_argument("--val", type=Path, default=VAL_LABELS)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--out", type=Path, default=None)
@@ -50,8 +48,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.val.is_file():
         print(f"FAILED: {args.val} not found", file=sys.stderr)
         return 2
+    # The evaluation adapter already knows how to load each variant and how to
+    # score it, so calibration borrows it rather than growing a second loader
+    # that could drift. What is calibrated is then exactly what is evaluated.
+    from eval.baselines.student import StudentSystem
+
     try:
-        model = load(args.model_dir)
+        system = StudentSystem(
+            model_dir=args.model_dir, variant=args.variant, calibration_path=None
+        )
     except (FileNotFoundError, ValueError) as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         return 2
@@ -59,10 +64,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     records = list(read_records(args.val))
     if args.limit is not None:
         records = records[: args.limit]
-    print(f"scoring {len(records)} validation units with the saved model ...", flush=True)
+    print(
+        f"scoring {len(records)} validation units with saved model {args.variant} ...",
+        flush=True,
+    )
 
     started = time.perf_counter()
-    probabilities = score_units(model, records)
+    probabilities = system.class_probabilities(records)
     elapsed = time.perf_counter() - started
     none_index = LABELS.index("none")
     scores = 1.0 - probabilities[:, none_index]
@@ -92,7 +100,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             "The model cannot be operated at that rate; eval.students will report it.",
             file=sys.stderr,
         )
-    assert DEFAULT_BUCKETS  # the import documents which bucket count the model assumes
     return 0
 
 
