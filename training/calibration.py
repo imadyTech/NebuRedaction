@@ -270,14 +270,23 @@ def threshold_for_fpr(
         not do what it says.
 
     The threshold is the *lowest* score that stays within budget, so recall is
-    the highest available at that rate.
+    the highest available at that rate, and ties are broken pessimistically so
+    that the rate is one the threshold can actually hold.
     """
     negatives = int((~truth).sum())
     positives = int(truth.sum())
     if negatives == 0 or positives == 0:
         return None, None, None
 
-    order = np.argsort(-probabilities, kind="stable")
+    # Ties are broken **pessimistically**: at an equal score a negative is
+    # ranked ahead of a positive. This is the convention NR-0002 fixed for
+    # PR-AUC, and it is not cosmetic. A single threshold cannot separate units
+    # that share a score, so counting the positives first would claim a recall
+    # the threshold cannot deliver — with every score equal, the optimistic
+    # order reports full recall at a 0.01% false-positive rate while the
+    # threshold in fact flags everything. int8 quantisation makes exact ties
+    # common, so this is the normal case rather than a corner one.
+    order = np.lexsort((truth, -probabilities))
     sorted_truth = truth[order]
     false_positives = np.cumsum(~sorted_truth)
     true_positives = np.cumsum(sorted_truth)

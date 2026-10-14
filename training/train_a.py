@@ -84,7 +84,15 @@ def evaluate(model: Any, dataset: Dataset) -> dict[str, Any]:
 
     positives = int(truth.sum())
     negatives = int((~truth).sum())
-    order = np.argsort(-scores)
+    # Ties are broken **pessimistically**: at an equal score a negative is
+    # ranked ahead of a positive. This is the convention NR-0002 fixed for
+    # PR-AUC, and it is not cosmetic. A single threshold cannot separate units
+    # that share a score, so counting the positives first would claim a recall
+    # the threshold cannot deliver — with every score equal, the optimistic
+    # order reports full recall at a 0.01% false-positive rate while the
+    # threshold in fact flags everything. int8 quantisation makes exact ties
+    # common, so this is the normal case rather than a corner one.
+    order = np.lexsort((truth, -scores))
     sorted_truth = truth[order]
 
     def recall_at_fpr(target: float) -> dict[str, Any]:
