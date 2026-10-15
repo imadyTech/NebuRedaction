@@ -1,0 +1,126 @@
+{
+ "model": "fixture-model-v1.nrm",
+ "feature_version": "1.0",
+ "labels": [
+  "none",
+  "token"
+ ],
+ "thresholds": {
+  "balanced": 0.5,
+  "conservative": 0.9
+ },
+ "cases": [
+  {
+   "key": "field",
+   "value": "",
+   "template": null,
+   "scope": null,
+   "probabilities": {
+    "none": 0.5312093733737563,
+    "token": 0.46879062662624377
+   },
+   "category": "none",
+   "score": 0.39233683016710835,
+   "should_redact_balanced": false,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "field",
+   "value": "short",
+   "template": null,
+   "scope": null,
+   "probabilities": {
+    "none": 0.5312093733737563,
+    "token": 0.46879062662624377
+   },
+   "category": "none",
+   "score": 0.39233683016710835,
+   "should_redact_balanced": false,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "field",
+   "value": "sh0rt",
+   "template": null,
+   "scope": null,
+   "probabilities": {
+    "none": 0.7981867777396212,
+    "token": 0.20181322226037882
+   },
+   "category": "none",
+   "score": 0.09009299396195179,
+   "should_redact_balanced": false,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "OrderId",
+   "value": "29",
+   "template": "Order 29 received",
+   "scope": "otel.attribute",
+   "probabilities": {
+    "none": 0.7981867777396212,
+    "token": 0.20181322226037882
+   },
+   "category": "none",
+   "score": 0.09009299396195179,
+   "should_redact_balanced": false,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "digest",
+   "value": "9f86d081884c7d659a2feaa0c55ad015",
+   "template": null,
+   "scope": "otel.attribute",
+   "probabilities": {
+    "none": 0.29421497216298875,
+    "token": 0.7057850278370112
+   },
+   "category": "token",
+   "score": 0.7431680086124812,
+   "should_redact_balanced": true,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "access_token",
+   "value": "notarealvalue1",
+   "template": "auth for {access_token}",
+   "scope": "otel.attribute",
+   "probabilities": {
+    "none": 0.29421497216298875,
+    "token": 0.7057850278370112
+   },
+   "category": "token",
+   "score": 0.7431680086124812,
+   "should_redact_balanced": true,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "Region",
+   "value": "auckland",
+   "template": null,
+   "scope": "otel.attribute",
+   "probabilities": {
+    "none": 0.5312093733737563,
+    "token": 0.46879062662624377
+   },
+   "category": "none",
+   "score": 0.39233683016710835,
+   "should_redact_balanced": false,
+   "should_redact_conservative": false
+  },
+  {
+   "key": "payload",
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "template": null,
+   "scope": null,
+   "probabilities": {
+    "none": 0.29421497216298875,
+    "token": 0.7057850278370112
+   },
+   "category": "token",
+   "score": 0.7431680086124812,
+   "should_redact_balanced": true,
+   "should_redact_conservative": false
+  }
+ ]
+}

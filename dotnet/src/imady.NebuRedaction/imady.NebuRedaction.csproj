@@ -7,8 +7,16 @@
     <PackageId>imady.NebuRedaction</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
-    <Description>Offline secret-credential classifier for structured log attributes. Pre-release, under construction.</Description>
+    <Description>Experimental offline secret-credential classifier for structured log attributes. Not recommended for production: accuracy gate G2 is not met (0.804 recall at a 0.1% false-positive rate against a 0.834 bar), and the false-positive rate is several times its target on log formats it was not trained on. Defence in depth only. No model weights are bundled.</Description>
     <PackageTags>logging;redaction;secrets;credentials;privacy;machine-learning</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The allocation-free feature path is internal because it is an
+         implementation detail of Project(), but its equivalence to the public
+         Hashed() is exactly what has to be proved rather than assumed, so the
+         tests need to reach both. -->
+    <InternalsVisibleTo Include="imady.NebuRedaction.Tests" />
+  </ItemGroup>
 
 </Project>

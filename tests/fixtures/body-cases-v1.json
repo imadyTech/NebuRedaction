@@ -1,0 +1,205 @@
+{
+ "cases": [
+  {
+   "name": "prose_only",
+   "why": "Every fragment is a prose word; none survives. This is the defect NR-0003 §2.0 exists to fix.",
+   "message": "connection established to the downstream auckland region",
+   "candidates": []
+  },
+  {
+   "name": "colon_prose",
+   "why": "A colon between two words is not evidence, and `received` is not key-like, so nothing is kept.",
+   "message": "ack received: downstream authorised",
+   "candidates": []
+  },
+  {
+   "name": "colon_key_like",
+   "why": "After a colon the key must be key-like; an underscore and a digit both qualify, so both short values are kept.",
+   "message": "auth failed for access_token: shortval and for retry2: alsoshort",
+   "candidates": [
+    {
+     "key": "access_token",
+     "value": "shortval",
+     "scope": "message.kv"
+    },
+    {
+     "key": "retry2",
+     "value": "alsoshort",
+     "scope": "message.kv"
+    }
+   ]
+  },
+  {
+   "name": "colon_credential_word",
+   "why": "A bare credential word is key-like even with no underscore or digit.",
+   "message": "login rejected, password: hunterhunter",
+   "candidates": [
+    {
+     "key": "password",
+     "value": "hunterhunter",
+     "scope": "message.kv"
+    }
+   ]
+  },
+  {
+   "name": "assignment",
+   "why": "`=` is evidence on its own, so both values are kept although neither has value shape.",
+   "message": "starting worker region=aucklandbay retries=seventeen",
+   "candidates": [
+    {
+     "key": "region",
+     "value": "aucklandbay",
+     "scope": "message.kv"
+    },
+    {
+     "key": "retries",
+     "value": "seventeen",
+     "scope": "message.kv"
+    }
+   ]
+  },
+  {
+   "name": "quoted_fragment",
+   "why": "Enclosing quotes keep a fragment that would otherwise be dropped as prose.",
+   "message": "rejected header \"lowercaseonlyword\" from the upstream",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "lowercaseonlyword",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "trailing_punctuation",
+   "why": "The trailing comma is stripped; the fragment is unmistakable hex.",
+   "message": "digest was 9f86d081884c7d659a2feaa0c55ad015, verified.",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "9f86d081884c7d659a2feaa0c55ad015",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "unquoted_base64_padding_is_not_captured",
+   "why": "The padding is absent from the candidate, and not because it was stripped: `=` is not in the unquoted value's character class, so the match ends before it. `_TRAILING_PUNCTUATION` excluding `=` therefore only matters for a quoted fragment, which the next case covers.",
+   "message": "payload cGFzc3dvcmRsZXNzc2FtcGxl== decoded",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "cGFzc3dvcmRsZXNzc2FtcGxl",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "quoted_base64_padding_kept",
+   "why": "Inside quotes the fragment is `[^\"]{8,}`, so the padding is captured, and it survives because `=` is deliberately not trailing punctuation.",
+   "message": "header \"cGFzc3dvcmRsZXNzc2FtcGxl==\" decoded",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "cGFzc3dvcmRsZXNzc2FtcGxl==",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "uuid_and_url",
+   "why": "Two unmistakable shapes with no key name; both are kept as slots.",
+   "message": "session 3f2504e0-4f89-41d3-9a0c-0305e82c3301 opened via https://internal.example.test/v2/resource",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+     "scope": "message.slot"
+    },
+    {
+     "key": "https",
+     "value": "//internal.example.test/v2/resource",
+     "scope": "message.kv"
+    }
+   ]
+  },
+  {
+   "name": "jwt_shape",
+   "why": "The JWT shape is unmistakable. Assembled from parts so the committed fixture does not contain a literal token-shaped string for a scanner to match.",
+   "message": "bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl presented",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "public_key_header",
+   "why": "The `-----BEGIN ` rule does **not** fire here: the space is not in the unquoted value class, so no candidate ever starts with it, and what survives is the base64 body instead. The rule is reachable for an attribute value and for a quoted fragment, which the next case covers. A public key, because a private-key header in a committed fixture is what gitleaks blocks.",
+   "message": "-----BEGIN PUBLIC KEY----- MIIBIjANBgkqhkiG9w0 -----END PUBLIC KEY-----",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "MIIBIjANBgkqhkiG9w0",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "quoted_public_key_header",
+   "why": "Quoted, the fragment keeps its `-----BEGIN ` prefix, which is where the unmistakable rule applies.",
+   "message": "pem \"-----BEGIN PUBLIC KEY----- MIIBIjANBgkqhkiG9w0\" loaded",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "-----BEGIN PUBLIC KEY----- MIIBIjANBgkqhkiG9w0",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "duplicate_value",
+   "why": "The same value twice yields one candidate.",
+   "message": "token=samevalue1234 retry with token=samevalue1234",
+   "candidates": [
+    {
+     "key": "token",
+     "value": "samevalue1234",
+     "scope": "message.kv"
+    }
+   ]
+  },
+  {
+   "name": "mixed_case_long_word",
+   "why": "A pure-letter fragment needs 20 characters and mixed case; the second is too short.",
+   "message": "label VeryLongMixedCaseWordHere and label shortMixed",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "VeryLongMixedCaseWordHere",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "digits_and_letters",
+   "why": "Eight or more characters with both a digit and a letter has value shape even with no key name.",
+   "message": "order a1b2c3d4e5 queued",
+   "candidates": [
+    {
+     "key": "<slot:value>",
+     "value": "a1b2c3d4e5",
+     "scope": "message.slot"
+    }
+   ]
+  },
+  {
+   "name": "empty",
+   "why": "No candidates, and no exception.",
+   "message": "",
+   "candidates": []
+  }
+ ]
+}
