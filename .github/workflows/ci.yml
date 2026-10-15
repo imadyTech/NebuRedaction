@@ -155,3 +155,18 @@ jobs:
           # see job summary" and there is nothing to act on from the outside —
           # which cost a debugging round the first time this job failed.
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+          # Keep in step with the gitleaks rev in .pre-commit-config.yaml, which
+          # is what .gitleaks.toml already says this project scans with ("every
+          # rule shipped with the gitleaks release in .pre-commit-config.yaml").
+          # Unset, the action installs its own default — 8.24.3 as of this
+          # writing — and the two disagree: on identical history, identical
+          # command and identical config, 8.30.1 reports no leaks while 8.24.3
+          # reports three, all of them AKIA-shaped literals in old test source
+          # that 8.30.1's own allowlist suppresses. NR-0001 §9 hit the same
+          # version skew from the other direction and fixed the literal; this
+          # removes the skew itself.
+          #
+          # Note this pins *upward*: 8.30.1 carries more rules than 8.24.3, so
+          # it is a stronger scan, not a relaxed one. No allowlist entry is
+          # added for those findings, and none should be.
+          GITLEAKS_VERSION: "8.30.1"
