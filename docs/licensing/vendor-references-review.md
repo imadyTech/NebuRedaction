@@ -97,7 +97,7 @@ https://huggingface.co/convaiinnovations/laya
 
 ## 5. 须由 Frank 决定的事项
 
-### F1 — `aws.access_key_id` 的出处指向错误页面（事实错误，建议修正）
+### F1 — `aws.access_key_id` 的出处指向错误页面（事实错误）—— **已按 Frank 2026-10-15 决定修正**
 
 `datagen/families/api_keys.py`：
 
@@ -115,7 +115,9 @@ note    = "AKIA prefix plus 16 upper-case alphanumerics."
 
 **正确出处应为** `https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-prefixes`；长度与字母表若要保留，需另找来源或改写为本项目的观察（照 27 个“No vendor format”条目的写法）。
 
-**影响范围**：仅此一族的 `doc_url` 与 `note`，不影响生成的值（`AKIA` 前缀本身是对的）。修改涉及代码，按指示未执行。
+**影响范围**：仅此一族的 `doc_url` 与 `note`，不影响生成的值（`AKIA` 前缀本身是对的）。
+
+**处理**：Frank 2026-10-15 批准修正。`doc_url` 改为上述正确页面与锚点；`note` 改为区分「AWS 文档记载的」（AKIA 前缀）与「本项目自行构造的」（其余 16 位的长度与字母表）。生成的值未变，507 项 `tests/datagen/` 全过。
 
 ### F2 — 三个格式族与两条规则以厂商自有博客为出处（需定调）
 

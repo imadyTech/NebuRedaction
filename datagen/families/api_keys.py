@@ -180,8 +180,13 @@ register(
         name="aws.access_key_id",
         label=LABEL,
         generate=_aws_access_key_id,
-        doc_url="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#identifiers-unique-ids",
-        note="AKIA prefix plus 16 upper-case alphanumerics.",
+        doc_url="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-prefixes",
+        note=(
+            "The AKIA prefix is documented: the page's unique-ID prefix table "
+            "gives AKIA for an access key. The remaining 16 characters are this "
+            "project's own construction — the documentation gives prefixes "
+            "only, not lengths or alphabets (NR-0008 §2.0 finding F1)."
+        ),
     )
 )
 register(
