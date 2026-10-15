@@ -13,9 +13,15 @@ tests that need it skip when it is absent rather than failing a fresh checkout.
 from __future__ import annotations
 
 import hashlib
+import random
+import sys
 from pathlib import Path
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from datagen.families import REGISTRY
 
 from neburedaction.detector import (
     BALANCED,
@@ -86,9 +92,19 @@ def test_an_override_leaves_the_probabilities_untouched() -> None:
 
 
 def test_never_redact_suppresses_a_model_decision() -> None:
-    """And records that it did."""
+    """And records that it did.
+
+    The value is produced by the generator rather than written out: this test
+    previously carried a vendor's own published example access key id, which
+    EXECUTION.md §5 item 3 forbids (NR-0008 §2.0 finding F4). The premise is
+    asserted first, so the test cannot quietly decay into an override that
+    merely agrees with the model.
+    """
+    value = REGISTRY["aws.access_key_id"].generate(random.Random(20261016))
+    assert _detector().classify("anykey", value).should_redact, "premise no longer holds"
+
     detector = _detector(never_redact_keys=frozenset({"anykey"}))
-    result = detector.classify("anykey", "AKIAIOSFODNN7EXAMPLE")
+    result = detector.classify("anykey", value)
     assert not result.should_redact
     assert result.reason == "never"
 

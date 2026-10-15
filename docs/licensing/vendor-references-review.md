@@ -1,150 +1,203 @@
-# 厂商出处核查（NR-0008 §2.0）
+# Vendor provenance review
 
-本项目模仿真实凭据的**形制**来生成合成数据。形制从哪里来、有没有抄自第三方代码而未声明、对外文档里有没有不该出现的厂商名 —— 这三件事本文逐项核查。
+NR-0008 §2.0. This project imitates the *shapes* of real credentials in order
+to generate synthetic training data. Three questions follow from that, and this
+document answers each: where those shapes came from, whether anything was
+copied from third-party code without declaring it, and whether vendor names
+appear anywhere EXECUTION.md §9 says they should not.
 
-**只核查，不修改。** 发现的不符项列在 §5，由 Frank 决定如何处理（NR-0008 §2.0 第 4 项）。
+**Review only.** Findings are listed in §5 with the decision taken on each.
+Code was changed in exactly one place, F1, and only after that decision.
 
-**本文自身不受 EXECUTION.md §9 第 4 条约束。** §9 禁止在对外文档中以真实厂商作示例，而一份厂商出处核查报告无法在不指名厂商的情况下完成。本文的读者是本项目的维护者与审计者，不是库的使用者。
+**This document is exempt from EXECUTION.md §9 item 4 by its subject.** §9
+forbids using real vendors as examples in public-facing documentation; a review
+of vendor provenance cannot be written without naming vendors. It names them to
+audit them, not to illustrate anything. In-text citations follow APA 7th
+edition, as §9 item 1 requires of an English document, and the reference list is
+in §6.
 
-| 项 | 内容 |
+| | |
 |---|---|
-| 核查日期 | 2026-10-15 |
-| 核查范围 | `main` @ `618803b`，入库文件 170 个；git 全历史 44 个提交 |
-| 依据 | NR-0008 §2.0；EXECUTION.md §9（2026-10-15） |
-| 工具 | 逐文件正则清点、`git log -p --all` 全历史差异扫描、`datagen.families` 与 `eval.baselines.rules` 的运行时自省 |
+| Reviewed | 2026-10-15; translated to English and citations added 2026-10-16 |
+| Scope | `main` at `618803b`: 170 tracked files, and all 44 commits of history |
+| Governing rules | NR-0008 §2.0; EXECUTION.md §9 (2026-10-15) |
+| Method | per-file regular-expression inventory; full-history diff scan via `git log -p --all`; runtime introspection of `datagen.families` and `eval.baselines.rules` |
 
-## 1. 厂商名称清点（§2.0 第 1 项）
+## 1. Vendor-name inventory (§2.0 item 1)
 
-按**用途**分类，而不是按文件罗列 —— 同一个厂商名出现在格式族定义里和出现在对外报告正文里，性质完全不同。
+Grouped by **purpose** rather than listed by file. The same vendor name means
+something entirely different in a format-family definition than it does in the
+body of a public report.
 
-| 用途 | 出现次数 | 文件数 | 说明 |
+| Purpose | Occurrences | Files | Notes |
 |---|---:|---:|---|
-| 1 生成器格式族 `datagen/families/` | 152 | 8 | 合成生成器的形制定义。厂商名是**格式族标识符**，每族附出处（见 §2） |
-| 2 规则基线 `eval/baselines/` | 68 | 2 | NR-0002 的正则基线与 CredSweeper 适配器。27 条规则逐条附出处 |
-| 3 其他代码 | 38 | 9 | 键名词表 `datagen/lexicon/keys.yaml`（25）、生成配置、单元 schema、评估变换 |
-| 4 发布库 `python/` `dotnet/` | 8 | 7 | **全部不是厂商引用**：`microsoft` 来自 `learn.microsoft.com` 链接与 MSBuild 属性名、`.editorconfig` 的分析器 id 等 |
-| 5 测试 | 47 | 13 | 格式族与规则的断言 |
-| 6 **docs（对外）** | 43 | 3 | **见 §5 的 F4** |
-| 7 第三方声明 `THIRD_PARTY_NOTICES.md` | 12 | 1 | 数据集、模型、工具的来源与许可 |
-| 8 其他（语料工具、CI、配置） | 68 | 13 | `corpus/fetch_creddata.py`（28）与 `corpus/mappings/creddata.yaml`（21）把 CredData 的标签映射到本项目类别；CI 与 gitleaks 配置 |
+| 1 Generator families, `datagen/families/` | 152 | 8 | Format definitions. The vendor name is a **family identifier**, and each family cites its source (§2) |
+| 2 Rule baseline, `eval/baselines/` | 68 | 2 | NR-0002's regular-expression baseline and the CredSweeper adapter. All 27 rules carry a provenance field |
+| 3 Other code | 38 | 9 | The key-name lexicon `datagen/lexicon/keys.yaml` (25), generator config, unit schema, evaluation transforms |
+| 4 Shipping libraries, `python/` `dotnet/` | 8 | 7 | **None is a vendor reference**: `microsoft` comes from `learn.microsoft.com` links, MSBuild property names and analyzer ids in `.editorconfig` |
+| 5 Tests | 47 | 13 | Assertions about families and rules |
+| 6 **`docs/` (public-facing)** | 43 | 3 | **See finding F4** |
+| 7 Third-party notices | 12 | 1 | Sources and licences for datasets, models and tools |
+| 8 Corpus tooling, CI, configuration | 68 | 13 | `corpus/fetch_creddata.py` (28) and `corpus/mappings/creddata.yaml` (21) map CredData's labels onto this project's classes; CI and gitleaks configuration |
 
-### 1.1 git 全历史
+### 1.1 Full history
 
-- 历史上出现过的路径 **170 个，与当前树完全一致** —— 没有任何文件被删除过，因此不存在"只在历史里的文件"。
-- 对 `git log -p --all` 的**被删除行**做厂商名扫描：命中的 4 个名字（`redis`、`pypi`、`logpai`、`mooselab`）**全部仍在当前树中**。**不存在仅存于历史的厂商引用。**
-- 历史中确实存在两个已被移除的 **AWS 形制字面量**（测试源码里的两个 `AKIA` + 16 位大写字母数字串，分别含 `TESTVALUE` 与 `EXAMPLE` 字样），分别由 `6f82971` 与 `68253ce` 移除。**此处不照抄原串** —— EXECUTION.md §5 第 3 项禁止在仓库中提交任何厂商形制的凭据串，包括源码字面量，而一份出处核查报告自己犯这条格外说不过去；要看原文按提交号查历史即可。二者都不是真实凭据，是形状而非内容；详见 NR-0001 §9 与 NR-0005 §9.11。这属于"仓库卫生"而非出处问题，此处记录以求完整。
+- History contains **exactly the 170 paths the current tree contains** — no file
+  has ever been deleted, so there is no such thing here as a file that exists
+  only in history.
+- Scanning the **removed lines** of `git log -p --all` for vendor names matched
+  four (`redis`, `pypi`, `logpai`, `mooselab`), and **all four are still in the
+  current tree**. No vendor reference exists only in history.
+- History does contain two removed vendor-shaped literals in test source: two
+  strings of `AKIA` plus 16 upper-case alphanumerics, one containing
+  `TESTVALUE` and one `EXAMPLE`, removed by `6f82971` and `68253ce`. **The
+  originals are not reproduced here** — EXECUTION.md §5 item 3 forbids
+  vendor-shaped credential strings anywhere in this repository, source literals
+  included, and a provenance review is the last place to break that rule. They
+  are reachable by commit id. Neither was a real credential; both were shapes,
+  not secrets. See NR-0001 §9 and NR-0005 §9.11.
 
-## 2. 格式出处（§2.0 第 2 项）
+## 2. Format provenance (§2.0 item 2)
 
-**114 个格式族，全部带出处字段，无一缺失。** 分类统计与逐族清单见附录 A。
+**All 114 format families carry a provenance field. None is missing.** The
+classification below, and the per-family list in Appendix A, are generated from
+the registry rather than transcribed.
 
-| 分类 | 计数 |
-|---|---|
-| 开放标准/规范 | 43 |
-| 厂商官方文档 | 35 |
-| 无厂商格式（明写理由） | 27 |
-| 项目自有仓库 | 5 |
-| ★ 厂商自有博客（非参考文档） | 3 |
-| ★ 非官方（百科） | 1 |
+| Class | Count |
+|---|---:|
+| Open standard or specification | 43 |
+| Vendor documentation | 35 |
+| No vendor format (reason stated) | 27 |
+| Project's own repository | 5 |
+| Vendor's own engineering blog | 3 |
+| Encyclopaedia (not official) | 1 |
+| **Total** | **114** |
 
-值得单独记的是那 **27 个"无厂商格式"** 的条目。它们不是出处缺口，而是明写的否认加理由，例如：
+The **27 entries declaring "No vendor format"** deserve a note of their own.
+They are not gaps in the record; each is an explicit denial with a stated
+reason, for instance:
 
-- `ambiguous.hex32` —— “No vendor format: plan §3.3's stated ambiguity between a 32-hex key and a 32-hex digest.”
-- `password.memorable` —— “No vendor format: human-chosen word-plus-digits passwords, the low-entropy case a detector cannot catch on entropy alone.”
-- `pem.single_line_escaped` —— “No vendor format: the flattened form structured logging produces when a PEM block becomes one string field.”
+- `ambiguous.hex32` — "No vendor format: plan §3.3's stated ambiguity between a
+  32-hex key and a 32-hex digest."
+- `password.memorable` — "No vendor format: human-chosen word-plus-digits
+  passwords, the low-entropy case a detector cannot catch on entropy alone."
+- `pem.single_line_escaped` — "No vendor format: the flattened form structured
+  logging produces when a PEM block becomes one string field."
 
-这类条目正是本项目的立意所在：模仿不了厂商的，就说明自己为什么这么构造。
+That pattern is the point of the exercise: where a vendor could not be cited,
+the family says why it is constructed the way it is.
 
-### 2.1 是否有内容复制自第三方代码而未声明
+### 2.1 Content copied from third-party code
 
-逐项核查，**未发现未声明的复制**：
+Checked entry by entry. **Nothing copied is undeclared.**
 
-| 第三方 | 本项目的使用 | 声明情况 |
+| Third party | How this project uses it | Declaration |
 |---|---|---|
-| **gitleaks**（MIT） | `eval/baselines/rules.py` 的 **27 条中有 2 条是移植**：`aws.access_key_id`、`azure.ad_client_secret` | **已声明**。`THIRD_PARTY_NOTICES.md` 的 “Tools and rule sets → gitleaks” 节点名这两条、复录 MIT 许可全文；源码里两条的 `provenance` 字段写 `gitleaks (MIT) — <规则名>`；另有一项测试断言每条移植规则都注明来源 |
-| **detect-secrets**（Apache-2.0） | 其**方法**（base64/hex 上的 Shannon 熵阈值）在 `eval/baselines/rules_entropy.py` 中重新实现 | **已声明**，并明确写为 “approach … reimplemented”，非代码复制 |
-| **CredSweeper**（Samsung） | 作为外部系统调用，`eval/baselines/credsweeper_adapter.py` | **已声明** |
-| **CredData / LogHub / SDLog / StarPII / Laya** | 数据集与模型 | **已声明** |
+| **gitleaks** (Rice, n.d.), MIT | **2 of the 27** baseline rules are ports: `aws.access_key_id` and `azure.ad_client_secret` | **Declared.** `THIRD_PARTY_NOTICES.md` names both under *Tools and rule sets* and reproduces the MIT licence in full; each rule's `provenance` field reads `gitleaks (MIT)` plus the rule name; and a test asserts that every ported rule names its origin |
+| **detect-secrets** (Yelp, n.d.), Apache-2.0 | Its *approach* — a Shannon-entropy threshold over base64 and hexadecimal strings — is reimplemented in `eval/baselines/rules_entropy.py` | **Declared**, and explicitly as an approach reimplemented, not code copied |
+| **CredSweeper** (Samsung, n.d.-b) | Invoked as an external system through `eval/baselines/credsweeper_adapter.py` | **Declared** |
+| **CredData, LogHub, SDLog, StarPII, Laya** | Datasets and a model | **Declared** |
 
-两处交叉核对的结果值得记下：
+Two cross-checks are worth recording:
 
-1. **生成器的 AWS 族与规则基线互相独立。** `datagen/families/api_keys.py` 的 `_aws_access_key_id` 只用 `AKIA` 一个前缀；而 `rules.py` 的同名规则用的是 gitleaks 的整套前缀集，其 `provenance` 字段**自己写明**“the prefix set is gitleaks', not AWS documentation”。两边没有混用，边界是清楚的。
-2. **键名词表没有从日志数据集统计而来。** `datagen/lexicon/keys.yaml` 的头部声明三个允许来源（厂商文档、主流框架配置约定、NebuLog 自有日志），并明写 “No name here was derived by counting key names in LogHub, CredData or SDLog”，同时记录规划 §5.2 与 §5.1 冲突时以 §5.1 为准。
+1. **The generator's AWS family and the rule baseline are independent.**
+   `datagen/families/api_keys.py` uses the single prefix AWS documents, while
+   the identically named rule in `rules.py` uses gitleaks' full prefix set and
+   says so in its own provenance field: the prefix set is gitleaks', not AWS
+   documentation. The boundary is drawn and stated.
+2. **The key-name lexicon was not derived from any log dataset.**
+   `datagen/lexicon/keys.yaml` declares three permitted sources — vendor
+   documentation, the configuration conventions of widely used frameworks, and
+   NebuLog's own demo-service logs — and states outright that no name there was
+   derived by counting key names in LogHub, CredData or SDLog, recording that
+   plan §5.2 and §5.1 conflict on this point and that §5.1 governs.
 
-## 3. 对外文档是否引用厂商的研究报告、博客或论文（§2.0 第 3 项）
+## 3. Vendor research cited in documentation (§2.0 item 3)
 
-**未发现。** `docs/`、`README.md`、`THIRD_PARTY_NOTICES.md` 中的全部外部引用只有 9 条，全是工具、数据集与模型权重的仓库地址：
+**None.** Every external reference in `docs/`, `README.md` and
+`THIRD_PARTY_NOTICES.md` points to a tool, dataset or model repository — nine
+in total, listed under F6. No vendor research report, engineering blog or paper
+is cited in any document.
 
-```
-http://www.apache.org/licenses/LICENSE-2.0
-https://github.com/Samsung/CredData
-https://github.com/Samsung/CredSweeper
-https://github.com/Yelp/detect-secrets
-https://github.com/gitleaks/gitleaks
-https://github.com/logpai/loghub
-https://github.com/mooselab/SDLog
-https://huggingface.co/bigcode/starpii
-https://huggingface.co/convaiinnovations/laya
-```
+A vendor's own engineering blog *is* cited five times — three format families
+and two baseline rules — but entirely **in code**, as format provenance. See
+F2.
 
-厂商自有博客（`github.blog`）确实被引用了 5 次，但**全部在代码里**作为格式出处（3 个格式族 + 2 条规则），不在对外文档中 —— 见 §5 的 F2。
+## 4. Conclusion
 
-## 4. 核查结论
+The provenance record for the generator and the rule baseline is complete: 114
+families and 27 rules, **none without a source**; **no undeclared**
+third-party port; **no vendor reference** anywhere in history that is not also
+in the current tree; and **no vendor research material** cited in any document.
 
-生成器与规则基线的出处记录是完整的：114 个格式族与 27 条规则**无一没有出处**，第三方移植**无一未声明**，git 全历史**没有隐藏的厂商引用**，对外文档**没有引用厂商的研究材料**。
+The findings fall into two groups: one factual citation error (F1), and several
+mismatches that arose because EXECUTION.md §9 was adopted on 2026-10-15, after
+the documents it governs were written (F4, F6).
 
-不符项集中在两处：**一条事实性的引用错误**（F1），以及 **EXECUTION.md §9 于 2026-10-15 新立之后，几份先前写成的文档不再符合新规**（F4、F5、F6）。
+## 5. Findings and decisions
 
-## 5. 须由 Frank 决定的事项
+### F1 — `aws.access_key_id` cited the wrong page — fixed (Frank, 2026-10-15)
 
-### F1 — `aws.access_key_id` 的出处指向错误页面（事实错误）—— **已按 Frank 2026-10-15 决定修正**
+The family cited a page about ARN formats, with an anchor for unique
+identifiers. Verified against the source (Amazon Web Services, n.d.-a):
 
-`datagen/families/api_keys.py`：
+1. That page is titled *Identify AWS resources with Amazon Resource Names
+   (ARNs)*. **It carries no `identifiers-unique-ids` anchor** — its anchors are
+   `reference-arns`, `arns-syntax`, `supported-arns`, `arns-paths` and
+   `arns-paths-wildcards`.
+2. **It does not mention the `AKIA` prefix at all.**
+3. The anchor name is correct but belongs to a **different page** (Amazon Web
+   Services, n.d.-b), whose *Understanding unique ID prefixes* section carries
+   the prefix table giving `AKIA` for an access key.
+4. Half the accompanying note — "plus 16 upper-case alphanumerics" — **is not
+   supported by AWS documentation either.** The table gives prefixes, not
+   lengths or alphabets.
 
-```
-doc_url = "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#identifiers-unique-ids"
-note    = "AKIA prefix plus 16 upper-case alphanumerics."
-```
+**Resolution.** The `doc_url` now points at the page and anchor that carry the
+prefix table, and the note separates what the documentation states (the prefix)
+from what this project chose (the length and alphabet of the remainder), in the
+style the 27 "No vendor format" families already use. Generated values are
+unchanged — the prefix was always right — and the 507 tests in `tests/datagen/`
+pass.
 
-逐条核对原始来源（EXECUTION.md §9 第 3 项）后确认：
+### F2 — three families and two rules cite a vendor's engineering blog — accepted (Frank, 2026-10-15)
 
-1. 该页标题为 *Identify AWS resources with Amazon Resource Names (ARNs)*，讲 ARN 格式；**页面上不存在 `identifiers-unique-ids` 锚点**（实际锚点为 `reference-arns`、`arns-syntax`、`supported-arns`、`arns-paths`、`arns-paths-wildcards`）。
-2. **该页完全没有记载 `AKIA` 前缀。**
-3. 锚点名本身是对的，但属于**另一个页面**：`reference_identifiers.html`。该页的 *Understanding unique ID prefixes* 一节（锚点 `#identifiers-prefixes`）有前缀表，其中 **`AKIA` = Access key**，`ASIA` = 临时访问密钥 id。
-4. 另外，`note` 里“plus 16 upper-case alphanumerics”这半句**不由 AWS 文档支持** —— 前缀表只给前缀，不给长度与字母表。
-
-**正确出处应为** `https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-prefixes`；长度与字母表若要保留，需另找来源或改写为本项目的观察（照 27 个“No vendor format”条目的写法）。
-
-**影响范围**：仅此一族的 `doc_url` 与 `note`，不影响生成的值（`AKIA` 前缀本身是对的）。
-
-**处理**：Frank 2026-10-15 批准修正。`doc_url` 改为上述正确页面与锚点；`note` 改为区分「AWS 文档记载的」（AKIA 前缀）与「本项目自行构造的」（其余 16 位的长度与字母表）。生成的值未变，507 项 `tests/datagen/` 全过。
-
-### F2 — 三个格式族与两条规则以厂商自有博客为出处 —— **已接受（Frank 2026-10-15）**
-
-| 处 | 出处 |
+| Site | Source |
 |---|---|
-| `github.pat_classic`、`github.app_installation_token`、`eval/baselines/rules.py` 的 `github.token` | `github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/` |
-| `github.pat_fine_grained`、`rules.py` 的 `github.fine_grained` | `github.blog/security/application-security/introducing-fine-grained-personal-access-tokens-for-github/` |
+| `github.pat_classic`, `github.app_installation_token`, and `github.token` in the rule baseline | GitHub's engineering blog on its authentication token formats |
+| `github.pat_fine_grained`, and `github.fine_grained` in the rule baseline | GitHub's blog post introducing fine-grained personal access tokens |
 
-`github.blog` 是 GitHub 自己的出版物，所以**发布者是官方的**；但它是工程博客文章，不是参考文档。§2.0 第 2 项要求标出“出处不是厂商官方公开文档”的条目，这几条处在边界上。
+The publisher is the vendor itself, so the source is official; but it is a blog
+post rather than reference documentation, which is what §2.0 item 2 asks to
+have flagged.
 
-需要指出的是：GitHub 的参考文档并未记载其令牌的 base62 CRC32 校验位，而数据卡正是据此构造的（`docs/data-card-synth.md` 第 63 行）。**就这一事实而言，该博客是现存最好的来源。**
+Worth stating plainly: **GitHub's reference documentation does not document the
+base62 CRC32 checksum** its token formats carry, and the data card's claim rests
+on exactly that detail. For this particular fact the blog is the best source
+that exists.
 
-**决定（Frank 2026-10-15）：接受厂商官方博客作为出处。** 理由：nebuRedaction 本身是博客级产物，最多投 arXiv 无评审；虽尽力向严谨发表物靠拢，但**须在技术报告中注明研究性质，不以刊物级别自我要求**。该注明由 §2.1 落实。
+**Decision: accepted.** The reasoning given was that nebuRedaction is itself a
+blog-level output — at most an unreviewed arXiv posting — and that while it is
+written to approach the standards of rigorous publication, **it must state its
+research status rather than hold itself to the standard of a reviewed journal.**
+Citing a vendor engineering blog is consistent with a document that declares
+that status. NR-0008 §2.1 carries the obligation to make the declaration.
 
-### F3 — `neg.snowflake_id` 以维基百科为出处 —— **已接受（Frank 2026-10-15）**
+### F3 — `neg.snowflake_id` cites an encyclopaedia — accepted (Frank, 2026-10-15)
 
-`doc_url = "https://en.wikipedia.org/wiki/Snowflake_ID"`。维基百科是第三方百科，不是任何厂商的官方文档。该族是**负例**（雪花 id 不是凭据），所以形制错一点不影响标签正确性，但出处不合规。
+The family cites Wikipedia, which is neither a vendor nor an official source.
+The family is a **negative** — a Snowflake id is not a credential — so an
+imprecise shape cannot produce a wrong label, only a less realistic negative.
 
-**决定（Frank 2026-10-15）：维基百科在此合适，不改。**
+**Decision: accepted as adequate for this use.**
 
-### F4 — 两份既有对外文档不符合 §9 第 4 条 —— **键名不改（Frank 2026-10-15）**
+### F4 — vendor key names in public documents — key names kept (Frank, 2026-10-15)
 
-EXECUTION.md §9 决定于 **2026-10-15**，而下列文档写在其之前，因此这**不是当时的违规，而是新规出台后的不一致**。
+§9 was adopted on 2026-10-15 and both documents below predate it, so this is a
+**mismatch with a new rule, not a violation at the time of writing.**
 
-**`docs/reports/baseline-v0.md`**（技术报告类，在 §9 适用范围内）：
-
-原文（表格行，含原始竖线，故以代码块引出）：
+`docs/reports/baseline-v0.md`, a report and therefore within §9's scope, in
+table rows whose own pipes prevent quoting them as a table:
 
 ```
 116 | `aws.secret_access_key` | 124 | 40 base64 characters, no prefix
@@ -153,196 +206,313 @@ EXECUTION.md §9 决定于 **2026-10-15**，而下列文档写在其之前，因
 127 | `DATADOG_API_KEY`       | 32 hex characters    | `api_key`
 ```
 
-- 第 **116、117** 行：评估结果正文列出厂商格式族。
-- 第 **126、127** 行：**以真实厂商作示例键名**。
+Lines 116–117 name vendor format families in a results table; lines 126–127 use
+real vendor names **as example key names**, which is the most direct mismatch
+with §9 item 4.
 
-第 126、127 行是最直接的不符：§9 第 4 条要求示例键名用虚构名称（如 `IMADY_API_KEY`）。
+`docs/data-card-synth.md`, a data card and explicitly within scope, names
+GitHub, Twilio and AWS in body text (lines 63, 68, 189) and lists vendor-named
+held-out families (lines 122–124). `students-v0.md` and `dotnet-runtime-v0.md`
+contain no vendor-name hits.
 
-**`docs/data-card-synth.md`**（数据卡，§9 明确列入适用范围）：
+**Decision: the key names are kept.** The reasoning given was that
+`AWS_SECRET_ACCESS_KEY` and `DATADOG_API_KEY` are the attribute-bearing names
+real logs actually carry, whereas `IMADY_API_KEY` is a name that does not
+exist.
 
-| 行 | 内容 |
-|---|---|
-| 63 | “GitHub's token formats carry a base62 CRC32 checksum over the …” —— 正文点名厂商 |
-| 68 | “twins of a Twilio auth token and a 64-hex API key” —— 正文点名厂商 |
-| 122–124 | 留出族清单含 `azure.ad_client_secret`、`oauth.google_refresh_token`、`cookie.laravel_session` |
-| 189 | “an AWS access key *id* is an `api_key` even though …” —— 正文点名厂商 |
+That decision was taken against measurement rather than argument, because the
+natural objection is that changing those names might partially disable the
+model. It does not, and the reason is structural rather than lucky. Full data
+is in NR-0008 §9.3; in summary:
 
-`docs/reports/students-v0.md` 与 `docs/reports/dotnet-runtime-v0.md` **无厂商名命中**。
+- The shipped model reads **256 of 32,768** hash buckets. The tokens `aws`,
+  `datadog` and `imady` are **not among them**; `secret`, `key` and `token`
+  are. What the model learned is that the key name contains secret, key or
+  token — never that it contains aws.
+- Renaming changes **exactly 2 of 32,799 features** — it switches off the
+  vendor token's bucket and switches on the replacement's — and **neither
+  bucket is one the model reads**. All 31 engineered features stay
+  byte-identical, because the word count is unchanged and the sensitive words
+  are preserved.
+- Ten probe scores across both pairs of names came out at a difference of
+  **exactly zero**, with identical decisions.
 
-**决定（Frank 2026-10-15）：键名不改。** 理由（原话）：「`AWS_SECRET_ACCESS_KEY` 或者 `DATADOG_API_KEY` 才是真实场景里用到的带有属性的词，`IMADY_API_KEY` 目前是不存在的。」
+So keeping the names is not about avoiding a cost; there is none for this
+model. It is that **the lexicon is training data meant to mirror reality, not
+an example shown to a reader.** §9 item 4 was written for documentation
+examples, and applying it to a training vocabulary is a category error — one
+that happens to be harmless here only because the model never learned the
+vendor token.
 
-这个决定经过实测，不是未经评估的取舍 —— 完整数据见工单 §9.3。要点：改名对**当前模型**的输出**逐位无影响**（Δ 恰好为 0），因为它只改动 32,799 个特征中的 2 个，而那两个哈希桶**都不在模型读取的 256 个之内**；模型学到的是键名里的 `secret` / `key` / `token`，不是 `aws` / `datadog`。所以不改名并非为了避免性能损失，而是**为了让训练数据与真实世界保持一致**：训练词表不是给用户看的示例，§9 第 4 条是为对外文档的示例所写，套到训练词表上属范畴错位。
+**A limitation follows, and must be declared** (Frank, 2026-10-15). Bucket
+selection is by frequency over the training corpus, so a user who trains
+further or adds target words changes which 256 buckets are selected, and must
+**retrain, recalibrate, re-choose both thresholds and re-run the evaluation** —
+four steps, none of them skippable. Every number this project reports holds for
+one model, one corpus and one test set. The full statement is NR-0008 §9.6; it
+belongs in the technical report's limitations chapter and in NR-0006's model
+card.
 
-**由此派生出一条须声明的使用局限**（Frank 2026-10-15 指示）：使用者进一步训练或增加目标词，会改变按词频选中的那 256 个桶，因而须**重训 → 重校准 → 重选阈值 → 重跑评估**，四步缺一不可；本项目报告的每个数字只对“该模型 + 该语料 + 该测试集”成立。完整表述见工单 §9.6，落实位置为 §2.1 第 8 章与 NR-0006 的模型卡。
+**Resolved since.** Three values published in a vendor's documentation as
+illustrative placeholders had been written verbatim into test source — two in
+`tests/labeling/test_rule_labeller.py` and one in
+`tests/neburedaction/test_detector.py`, the last added during NR-0005. They had
+nothing to do with the model, but they breached EXECUTION.md §5 item 3, and
+**gitleaks structurally cannot catch that class**: the values contain
+`EXAMPLE`, a stop word, which is the same suppression the project relies on
+elsewhere. All three are now produced by the generator at test time, and
+`tests/test_no_vendor_examples.py` enforces their absence — a guard whose own
+detection is verified against planted values, because a guard that silently
+matches nothing passes forever.
 
-**仍待决**：§9 是否追溯适用于 `baseline-v0.md` 与 `data-card-synth.md` 的既有正文表述（与键名决定无关的那部分）。另查出**三处 AWS 文档公开示例值**被原样写入测试源码（`tests/labeling/test_rule_labeller.py` 第 61、186 行；`tests/neburedaction/test_detector.py` 第 91 行，后者为执行者在 NR-0005 写入）。它们与模型无关，但触犯 EXECUTION.md §5 第 3 项，且 **gitleaks 结构上抓不到这一类**（含 `EXAMPLE`，正是 8.30.1 的停用词）。删除成本为零，待 Frank 决定。
+**Still open:** whether §9 applies retroactively to the prose in
+`baseline-v0.md` and `data-card-synth.md`.
 
-### F5 — 评估切片名本身就是厂商命名 —— **已结案：无须暂停（Frank 2026-10-15）**
+### F5 — the evaluation slices are vendor-named — closed without a pause (Frank, 2026-10-15)
 
-这是 F4 背后更深的一层，单改文档解决不了。
+The question raised was one of intellectual property: whether what those slices
+use is licensed under MIT or another open-source licence, since if not, the
+project's licensing would have a hole and work would have to stop.
 
-格式族标识符（`aws.access_key_id`、`datadog.api_key`、`slack.bot_token` …）同时是：
+**No such licence is required, because no copyrighted work is being copied.**
+What the project takes from vendors is three distinct things, and only one of
+them is a licensing matter:
 
-- 生成器的族名；
-- 评估框架的**切片名**，按格式族报告结果时必须指名；
-- **冻结在 `eval/testsets.lock` 里**的测试集内容的一部分；
-- NR-0002 以来各报告中的既有表述。
+1. **Names used as identifiers** (`aws.access_key_id`, `DATADOG_API_KEY`) are
+   trademarks, not copyrightable works. Using a mark to denote the thing it
+   names is nominative use.
+2. **Factual format descriptions** — a prefix, a length, an alphabet —
+   published by vendors so that others may implement against them. Facts are
+   not copyrightable, and writing one's own generator or regular expression
+   from a published description does not copy the description. Every secret
+   scanner, gitleaks included, rests on this. **The slice names come from (1)
+   and the slice contents from (2).**
+3. **Verbatim expression from vendor documentation** was the one place actual
+   copying occurred — the three placeholder values described under F4, now
+   removed. They were almost certainly too short and too arbitrary to attract
+   copyright, but "probably de minimis" is a poor position to hold when
+   deleting them costs nothing.
 
-§9 第 4 条要求“描述评估结果时……以中性名称表述，不在正文中列出厂商名称”。但按格式族报告结果，就得指名切片；而重命名既是代码改动（本单不得执行），又会作废已冻结的测试集 —— EXECUTION.md §8 禁止在 G1 之后改测试集而不声明。
+The project's one genuine licence dependency is already discharged: the two
+regular expressions ported from gitleaks are MIT, declared, reproduced in full,
+and enforced by a test.
 
-**两条可行路径，请 Frank 选**：
+**Two reservations, stated rather than buried.** The author of this review is
+not a lawyer. Whether trademark use in a public repository and a published
+report requires an explicit notice, and whether a vendor's documentation site
+terms bear on reusing published format facts, are judgement calls that were
+referred upward. On the first, a trademark and no-affiliation notice has since
+been added to `THIRD_PARTY_NOTICES.md`.
 
-1. **中性展示名映射**：保留代码中的族标识符不动，在报告层引入一张映射表（如 `aws.access_key_id` → “某云服务的访问密钥 id”），对外文档只用展示名。代价是报告与 `runs/` 里的原始输出之间多一层转换，追溯性略降（NR-0008 §2.3 第 2 项要求每个数字可追溯）。
-2. **区分“标识符”与“示例”**：认定 §9 第 4 条约束的是*示例*（示例键名、示例值），而评估切片的*标识符*不属于示例，可照原样出现在结果表中；同时严格禁止把厂商名用作示例键名（即 F4 的第 126、127 行仍须改）。
+### F6 — citations in existing documents (§9 items 1–2)
 
-我的倾向是路径 2 加一条限制：结果表可用标识符，正文叙述用中性表述。它保住了可追溯性，也仍然清除了“拿真实厂商当示例”这一实际风险。但这是定调，不是执行者该定的。
+The nine external references in the repository sit in just two files:
 
-### F6 — 既有文档的引用不符合 §9 第 1、2 条（格式与版本/访问日期）
-
-现有 9 条外部引用**全是裸 URL**：没有著者、年份、版本号或访问日期，也没有采用 APA 第 7 版或 GB/T 7714—2015 的任何一种，文末也没有参考文献表。
-
-§9 第 2 条要求数据集与软件注明版本或访问日期；第 1 条要求正文内标注加文末参考文献表。
-
-- **NR-0008 的新产出必须合规**，这已写入其 §2.3 第 1 项，由本单执行。
-- **既有文档**是否补齐，需 Frank 决定。注意 `THIRD_PARTY_NOTICES.md` 是**许可声明**而非引用文献，其形式要求与 §9 未必相同。
-
-**那 9 条引用的确切位置（Frank 2026-10-15 问）**：
-
-| 文档 | 条数 |
+| Document | References |
 |---|---:|
-| `THIRD_PARTY_NOTICES.md` | 9（全部） |
-| `docs/licensing/R0-license-review.md` | 8（少一条 Apache 许可链接） |
+| `THIRD_PARTY_NOTICES.md` | 9 (all of them) |
+| `docs/licensing/R0-license-review.md` | 8 (all but the Apache licence URL) |
 
-两者都**不在** §9 点名的适用范围内。**更要紧的是反面**：凡在 §9 范围内的文档 —— `docs/data-card-synth.md`、`docs/reports/baseline-v0.md`、`docs/reports/students-v0.md`、`docs/reports/dotnet-runtime-v0.md`、`docs/spec/nrm-v1.md`、`README.md` —— **外部引用数全是 0**，而它们正文里既讲凭据形制，又提到 CredData、gitleaks、Laya。所以 F6 的实质不是"引用格式不规范"，而是**该有参考文献的地方没有**。本文附录 A 里的 92 条 URL 是出处对照表，不是参考文献表。
+Neither is named in §9's scope (user guide, technical report, model card, data
+card, README, blog draft). **The sharper finding is the inverse:** every
+document that *is* in scope — `docs/data-card-synth.md`,
+`docs/reports/baseline-v0.md`, `docs/reports/students-v0.md`,
+`docs/reports/dotnet-runtime-v0.md`, `docs/spec/nrm-v1.md` and `README.md` —
+contained **zero** external references, while discussing credential formats and
+naming CredData, gitleaks and Laya in prose. So F6 is not "bare URLs where
+formatted citations belong"; it is "no bibliography where §9 requires one". The
+provenance URLs in Appendix A are a data table, not a bibliography.
 
-## 附录 A — 逐族与逐规则出处
+**Decision** (Frank, 2026-10-16): reference lists are added to the documents
+that will be **published** — `README.md`, `docs/data-card-synth.md`,
+`docs/licensing/R0-license-review.md` and this review. Internal process
+documents are left alone.
 
-分类统计见 §2（此处不重复）。
+## 6. References
 
-### A.1 → 见 §2
+Bibliographic details were checked against each source on 2026-10-16. Software
+and dataset entries give the version this project pins where one is pinned, and
+a retrieval date where the source is undated and subject to change, as APA 7th
+edition directs. Where a work carries no publication date, `n.d.` is used
+rather than a guess.
 
-### A.2 逐族出处
+Amazon Web Services. (n.d.-a). *Identify AWS resources with Amazon Resource
+Names (ARNs)*. AWS Identity and Access Management User Guide. Retrieved
+October 16, 2026, from
+https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html
 
-| 格式族 | 出处分类 | 出处 |
+Amazon Web Services. (n.d.-b). *IAM identifiers*. AWS Identity and Access
+Management User Guide. Retrieved October 16, 2026, from
+https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
+
+Apache Software Foundation. (2004). *Apache license, version 2.0*.
+http://www.apache.org/licenses/LICENSE-2.0
+
+BigCode. (n.d.). *StarPII* [Model]. Hugging Face. Retrieved October 16, 2026,
+from https://huggingface.co/bigcode/starpii
+
+Convai Innovations. (n.d.). *Laya* [Model]. Hugging Face. Retrieved
+October 16, 2026, from https://huggingface.co/convaiinnovations/laya
+
+Mooselab. (n.d.). *SDLog* [Computer software]. GitHub. Retrieved October 16,
+2026, from https://github.com/mooselab/SDLog
+
+Rice, Z. (n.d.). *gitleaks* (Version 8.30.1) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/gitleaks/gitleaks
+
+Samsung. (n.d.-a). *CredData* [Data set]. GitHub. Retrieved October 16, 2026,
+from https://github.com/Samsung/CredData
+
+Samsung. (n.d.-b). *CredSweeper* (Version 1.19.2) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/Samsung/CredSweeper
+
+Yelp. (n.d.). *detect-secrets* [Computer software]. GitHub. Retrieved
+October 16, 2026, from https://github.com/Yelp/detect-secrets
+
+Zhu, J., He, S., Liu, J., He, P., Xie, Q., Zheng, Z., & Lyu, M. R. (n.d.).
+*LogHub* [Data set]. GitHub. Retrieved October 16, 2026, from
+https://github.com/logpai/loghub
+
+**Deliberately not formatted as references.** The provenance URLs in Appendix A
+are data, not sources this document argues from: they record where each format
+family's shape was derived, and they are generated from the registry rather
+than curated. Formatting them as a bibliography would imply this review relies
+on all of them, which it does not. The two AWS pages it does rely on — the ones
+verified under F1 — appear above.
+
+Two further sources named in the text are this project's own internal documents
+rather than external publications, and are linked rather than cited:
+`THIRD_PARTY_NOTICES.md` and `docs/licensing/R0-license-review.md`.
+
+## Appendix A — provenance by family and by rule
+
+Generated from `datagen.families.REGISTRY` and `eval.baselines.rules`, not
+transcribed. Class counts are in §2 and are not repeated here.
+
+| **Total** | **114** |
+
+### A.1 Every family and its provenance
+
+| Format family | Class | Provenance |
 |---|---|---|
-| `github.app_installation_token` | ★ 厂商自有博客（非参考文档） | https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/ |
-| `github.pat_classic` | ★ 厂商自有博客（非参考文档） | https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/ |
-| `github.pat_fine_grained` | ★ 厂商自有博客（非参考文档） | https://github.blog/security/application-security/introducing-fine-grained-personal-access-tokens-for-github/ |
-| `neg.snowflake_id` | ★ 非官方（百科） | https://en.wikipedia.org/wiki/Snowflake_ID |
-| `amqp.connection_uri` | 厂商官方文档 | https://www.rabbitmq.com/docs/uri-spec |
-| `anthropic.api_key` | 厂商官方文档 | https://docs.claude.com/en/api/getting-started |
-| `aws.access_key_id` | 厂商官方文档 | https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#identifiers-unique-ids |
-| `aws.secret_access_key` | 厂商官方文档 | https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html |
-| `azure.ad_client_secret` | 厂商官方文档 | https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app |
-| `azure.storage_account_key` | 厂商官方文档 | https://learn.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage |
-| `azure.storage_connection_string` | 厂商官方文档 | https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string |
-| `cookie.aspnet_auth` | 厂商官方文档 | https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie |
-| `cookie.csrf_token` | 厂商官方文档 | https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery |
-| `cookie.laravel_session` | 厂商官方文档 | https://laravel.com/docs/12.x/session |
-| `datadog.api_key` | 厂商官方文档 | https://docs.datadoghq.com/account_management/api-app-keys/ |
-| `digitalocean.personal_access_token` | 厂商官方文档 | https://docs.digitalocean.com/reference/api/create-personal-access-token/ |
-| `gitlab.personal_access_token` | 厂商官方文档 | https://docs.gitlab.com/security/tokens/ |
-| `google.api_key` | 厂商官方文档 | https://cloud.google.com/docs/authentication/api-keys |
-| `hashicorp.vault_service_token` | 厂商官方文档 | https://developer.hashicorp.com/vault/docs/concepts/tokens |
-| `mongodb.srv_connection_string` | 厂商官方文档 | https://www.mongodb.com/docs/manual/reference/connection-string/ |
-| `mssql.connection_string` | 厂商官方文档 | https://learn.microsoft.com/en-us/sql/connect/ado-net/connection-string-syntax |
-| `mysql.connection_uri` | 厂商官方文档 | https://dev.mysql.com/doc/refman/8.4/en/connecting-using-uri-or-key-value-pairs.html |
-| `neg.assembly_version` | 厂商官方文档 | https://learn.microsoft.com/en-us/dotnet/api/system.version |
-| `neg.file_path_windows` | 厂商官方文档 | https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats |
-| `neg.git_commit_sha` | 厂商官方文档 | https://git-scm.com/docs/git-rev-parse#_specifying_revisions |
-| `npm.access_token` | 厂商官方文档 | https://docs.npmjs.com/about-access-tokens |
-| `nuget.api_key` | 厂商官方文档 | https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package |
-| `oauth.google_refresh_token` | 厂商官方文档 | https://developers.google.com/identity/protocols/oauth2 |
-| `openai.api_key` | 厂商官方文档 | https://platform.openai.com/docs/api-reference/authentication |
-| `postgres.connection_uri` | 厂商官方文档 | https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING |
-| `pypi.upload_token` | 厂商官方文档 | https://pypi.org/help/#apitoken |
-| `sendgrid.api_key` | 厂商官方文档 | https://www.twilio.com/docs/sendgrid/ui/account-and-settings/api-keys |
-| `session.signed_value` | 厂商官方文档 | https://expressjs.com/en/resources/middleware/cookie-session.html |
-| `slack.bot_token` | 厂商官方文档 | https://api.slack.com/authentication/token-types |
-| `slack.webhook_url` | 厂商官方文档 | https://api.slack.com/messaging/webhooks |
-| `stripe.restricted_key` | 厂商官方文档 | https://docs.stripe.com/keys#limit-access |
-| `stripe.secret_key` | 厂商官方文档 | https://docs.stripe.com/keys |
-| `twilio.api_key_sid` | 厂商官方文档 | https://www.twilio.com/docs/iam/api-keys |
-| `twilio.auth_token` | 厂商官方文档 | https://www.twilio.com/docs/iam/api-keys |
-| `basic_auth.bare_base64` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7617#section-2 |
-| `basic_auth.header` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7617 |
-| `cookie.jsessionid` | 开放标准/规范 | https://jakarta.ee/specifications/servlet/6.0/jakarta-servlet-spec-6.0#session-tracking-mechanisms |
-| `cookie.request_header` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc6265#section-4.2 |
-| `cookie.set_cookie_header` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc6265#section-4.1 |
-| `http.basic_credentials_in_url` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1 |
-| `jwt.es256` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7518#section-3.4 |
-| `jwt.hs256` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7519 |
-| `jwt.rs256` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7518#section-3.3 |
-| `neg.base64_of_json` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc4648#section-5 |
-| `neg.base64_of_text` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc4648#section-4 |
-| `neg.crc32_hex` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc1952#section-8 |
-| `neg.email_address` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1 |
-| `neg.etag` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc9110#field.etag |
-| `neg.file_path_posix` | 开放标准/规范 | https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_267 |
-| `neg.harmless_cookie` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc6265 |
-| `neg.hostname` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc1123#section-2 |
-| `neg.ipv4_address` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc1918 |
-| `neg.iso8601_timestamp` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc3339 |
-| `neg.md5_hex` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc1321 |
-| `neg.mime_type` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc9110#field.content-type |
-| `neg.public_key_pem` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7468#section-4 |
-| `neg.query_string_clean` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc3986#section-3.4 |
-| `neg.semver` | 开放标准/规范 | https://semver.org/spec/v2.0.0.html |
-| `neg.sha1_hex` | 开放标准/规范 | https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf |
-| `neg.sha256_hex` | 开放标准/规范 | https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf |
-| `neg.span_id` | 开放标准/规范 | https://www.w3.org/TR/trace-context/#parent-id |
-| `neg.ssh_public_key` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc4716 |
-| `neg.trace_id` | 开放标准/规范 | https://www.w3.org/TR/trace-context/#trace-id |
-| `neg.traceparent` | 开放标准/规范 | https://www.w3.org/TR/trace-context/#traceparent-header-field-values |
-| `neg.unix_epoch_millis` | 开放标准/规范 | https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_16 |
-| `neg.url_without_credentials` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc3986 |
-| `neg.user_agent` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc9110#field.user-agent |
-| `neg.uuid_v4` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc9562#section-5.4 |
-| `neg.uuid_v7` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc9562#section-5.7 |
-| `oauth.bearer_header` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc6750#section-2.1 |
-| `oauth.opaque_access_token` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc6749#section-1.4 |
-| `pem.ec_private_key` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc5915 |
-| `pem.encrypted_private_key` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7468#section-11 |
-| `pem.pkcs8_private_key` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7468#section-10 |
-| `pem.rsa_private_key` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc7468#section-11 |
-| `redis.connection_uri` | 开放标准/规范 | https://www.iana.org/assignments/uri-schemes/prov/redis |
-| `smtp.connection_uri` | 开放标准/规范 | https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1 |
-| `ambiguous.base64_32` | 无厂商格式（明写理由） | —（No vendor format: 32 bytes of base64 as either an encoded payload or a symmetric key） |
-| `ambiguous.hex32` | 无厂商格式（明写理由） | —（No vendor format: plan §3.3's stated ambiguity between a 32-hex key and a 32-hex digest） |
-| `ambiguous.hex40` | 无厂商格式（明写理由） | —（No vendor format: 40 hex characters as a session token, a SHA-1 digest or a commit id） |
-| `ambiguous.hex64` | 无厂商格式（明写理由） | —（No vendor format: plan §3.3's stated ambiguity between a 64-hex key and a SHA-256 digest） |
-| `ambiguous.uuid` | 无厂商格式（明写理由） | —（No vendor format: plan §3.3's stated ambiguity between a UUID correlation id and a session id） |
-| `generic.high_entropy_key` | 无厂商格式（明写理由） | —（No vendor format: this is the hand-rolled internal key that entropy heuristics must catch） |
-| `generic.oauth_client_secret` | 无厂商格式（明写理由） | —（No vendor format: OAuth 2.0 (RFC 6749) does not prescribe a client-secret shape, so deployments use base64, hex or a UUID） |
-| `generic.opaque_api_token` | 无厂商格式（明写理由） | —（No vendor format: the 'tok_' convention many internal portals adopt） |
-| `neg.build_number` | 无厂商格式（明写理由） | —（No vendor format: CI build identifiers in their common shapes） |
-| `neg.byte_size` | 无厂商格式（明写理由） | —（No vendor format: human-readable sizes as logging libraries render them） |
-| `neg.camel_case_value` | 无厂商格式（明写理由） | —（No vendor format: camel-case enum values from .NET configuration） |
-| `neg.config_word_value` | 无厂商格式（明写理由） | —（No vendor format: boolean and enum configuration values） |
-| `neg.correlation_slug` | 无厂商格式（明写理由） | —（No vendor format: the prefixed request ids seen in OpenStack and similar services） |
-| `neg.count_integer` | 无厂商格式（明写理由） | —（No vendor format: plain counts, the most common attribute value of all） |
-| `neg.duration` | 无厂商格式（明写理由） | —（No vendor format: elapsed-time values in the shapes .NET and OTel emit） |
-| `neg.license_key` | 无厂商格式（明写理由） | —（No vendor format: grouped product licence keys, high-entropy but not an authenticator） |
-| `neg.long_numeric_id` | 无厂商格式（明写理由） | —（No vendor format: account and order numbers） |
-| `neg.short_alnum_id` | 无厂商格式（明写理由） | —（No vendor format: short ids, too short to be a credential but dense per character） |
-| `neg.short_link` | 无厂商格式（明写理由） | —（No vendor format: shortener URLs, whose slug is random-looking but public） |
-| `neg.slug_identifier` | 无厂商格式（明写理由） | —（No vendor format: readable generated names, as container runtimes and CI produce） |
-| `password.memorable` | 无厂商格式（明写理由） | —（No vendor format: human-chosen word-plus-digits passwords, the low-entropy case a detector cannot catch on entropy alone） |
-| `password.placeholder` | 无厂商格式（明写理由） | —（No vendor format: the default placeholder passwords that appear in sample configuration files） |
-| `password.strong_random` | 无厂商格式（明写理由） | —（No vendor format: shaped after secret-manager output, with one character from each class (cf. NIST SP 800-63B composition guidance)） |
-| `password.url_safe` | 无厂商格式（明写理由） | —（No vendor format: the restricted alphabet used where a password must survive being put in a URL or connection string） |
-| `pem.body_without_header` | 无厂商格式（明写理由） | —（No vendor format: key material pasted without its PEM envelope, leaving no structural marker） |
-| `pem.single_line_escaped` | 无厂商格式（明写理由） | —（No vendor format: the flattened form structured logging produces when a PEM block becomes one string field） |
-| `session.id_hex` | 无厂商格式（明写理由） | —（No vendor format: hand-rolled hex session identifiers, the case plan §3.3 calls out as indistinguishable from a digest） |
-| `neg.digest_with_prefix` | 项目自有仓库 | https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests |
-| `neg.image_digest_reference` | 项目自有仓库 | https://github.com/opencontainers/distribution-spec/blob/main/spec.md |
-| `neg.nanoid` | 项目自有仓库 | https://github.com/ai/nanoid |
-| `neg.ulid` | 项目自有仓库 | https://github.com/ulid/spec |
-| `pem.openssh_private_key` | 项目自有仓库 | https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.key |
+| `neg.snowflake_id` | Encyclopaedia (not official) | https://en.wikipedia.org/wiki/Snowflake_ID |
+| `ambiguous.base64_32` | No vendor format (reason stated) | — No vendor format: 32 bytes of base64 as either an encoded payload or a symmetric key |
+| `ambiguous.hex32` | No vendor format (reason stated) | — No vendor format: plan §3.3's stated ambiguity between a 32-hex key and a 32-hex digest |
+| `ambiguous.hex40` | No vendor format (reason stated) | — No vendor format: 40 hex characters as a session token, a SHA-1 digest or a commit id |
+| `ambiguous.hex64` | No vendor format (reason stated) | — No vendor format: plan §3.3's stated ambiguity between a 64-hex key and a SHA-256 digest |
+| `ambiguous.uuid` | No vendor format (reason stated) | — No vendor format: plan §3.3's stated ambiguity between a UUID correlation id and a session id |
+| `generic.high_entropy_key` | No vendor format (reason stated) | — No vendor format: this is the hand-rolled internal key that entropy heuristics must catch |
+| `generic.oauth_client_secret` | No vendor format (reason stated) | — No vendor format: OAuth 2.0 (RFC 6749) does not prescribe a client-secret shape, so deployments use base64, hex or a UUID |
+| `generic.opaque_api_token` | No vendor format (reason stated) | — No vendor format: the 'tok_' convention many internal portals adopt |
+| `neg.build_number` | No vendor format (reason stated) | — No vendor format: CI build identifiers in their common shapes |
+| `neg.byte_size` | No vendor format (reason stated) | — No vendor format: human-readable sizes as logging libraries render them |
+| `neg.camel_case_value` | No vendor format (reason stated) | — No vendor format: camel-case enum values from .NET configuration |
+| `neg.config_word_value` | No vendor format (reason stated) | — No vendor format: boolean and enum configuration values |
+| `neg.correlation_slug` | No vendor format (reason stated) | — No vendor format: the prefixed request ids seen in OpenStack and similar services |
+| `neg.count_integer` | No vendor format (reason stated) | — No vendor format: plain counts, the most common attribute value of all |
+| `neg.duration` | No vendor format (reason stated) | — No vendor format: elapsed-time values in the shapes .NET and OTel emit |
+| `neg.license_key` | No vendor format (reason stated) | — No vendor format: grouped product licence keys, high-entropy but not an authenticator |
+| `neg.long_numeric_id` | No vendor format (reason stated) | — No vendor format: account and order numbers |
+| `neg.short_alnum_id` | No vendor format (reason stated) | — No vendor format: short ids, too short to be a credential but dense per character |
+| `neg.short_link` | No vendor format (reason stated) | — No vendor format: shortener URLs, whose slug is random-looking but public |
+| `neg.slug_identifier` | No vendor format (reason stated) | — No vendor format: readable generated names, as container runtimes and CI produce |
+| `password.memorable` | No vendor format (reason stated) | — No vendor format: human-chosen word-plus-digits passwords, the low-entropy case a detector cannot catch on entropy alone |
+| `password.placeholder` | No vendor format (reason stated) | — No vendor format: the default placeholder passwords that appear in sample configuration files |
+| `password.strong_random` | No vendor format (reason stated) | — No vendor format: shaped after secret-manager output, with one character from each class (cf. NIST SP 800-63B composition guidance) |
+| `password.url_safe` | No vendor format (reason stated) | — No vendor format: the restricted alphabet used where a password must survive being put in a URL or connection string |
+| `pem.body_without_header` | No vendor format (reason stated) | — No vendor format: key material pasted without its PEM envelope, leaving no structural marker |
+| `pem.single_line_escaped` | No vendor format (reason stated) | — No vendor format: the flattened form structured logging produces when a PEM block becomes one string field |
+| `session.id_hex` | No vendor format (reason stated) | — No vendor format: hand-rolled hex session identifiers, the case plan §3.3 calls out as indistinguishable from a digest |
+| `basic_auth.bare_base64` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7617#section-2 |
+| `basic_auth.header` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7617 |
+| `cookie.jsessionid` | Open standard or specification | https://jakarta.ee/specifications/servlet/6.0/jakarta-servlet-spec-6.0#session-tracking-mechanisms |
+| `cookie.request_header` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc6265#section-4.2 |
+| `cookie.set_cookie_header` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc6265#section-4.1 |
+| `http.basic_credentials_in_url` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1 |
+| `jwt.es256` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7518#section-3.4 |
+| `jwt.hs256` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7519 |
+| `jwt.rs256` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7518#section-3.3 |
+| `neg.base64_of_json` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc4648#section-5 |
+| `neg.base64_of_text` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc4648#section-4 |
+| `neg.crc32_hex` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc1952#section-8 |
+| `neg.email_address` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc5322#section-3.4.1 |
+| `neg.etag` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc9110#field.etag |
+| `neg.file_path_posix` | Open standard or specification | https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_267 |
+| `neg.harmless_cookie` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc6265 |
+| `neg.hostname` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc1123#section-2 |
+| `neg.ipv4_address` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc1918 |
+| `neg.iso8601_timestamp` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc3339 |
+| `neg.md5_hex` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc1321 |
+| `neg.mime_type` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc9110#field.content-type |
+| `neg.public_key_pem` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7468#section-4 |
+| `neg.query_string_clean` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc3986#section-3.4 |
+| `neg.semver` | Open standard or specification | https://semver.org/spec/v2.0.0.html |
+| `neg.sha1_hex` | Open standard or specification | https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf |
+| `neg.sha256_hex` | Open standard or specification | https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf |
+| `neg.span_id` | Open standard or specification | https://www.w3.org/TR/trace-context/#parent-id |
+| `neg.ssh_public_key` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc4716 |
+| `neg.trace_id` | Open standard or specification | https://www.w3.org/TR/trace-context/#trace-id |
+| `neg.traceparent` | Open standard or specification | https://www.w3.org/TR/trace-context/#traceparent-header-field-values |
+| `neg.unix_epoch_millis` | Open standard or specification | https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_16 |
+| `neg.url_without_credentials` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc3986 |
+| `neg.user_agent` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc9110#field.user-agent |
+| `neg.uuid_v4` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc9562#section-5.4 |
+| `neg.uuid_v7` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc9562#section-5.7 |
+| `oauth.bearer_header` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc6750#section-2.1 |
+| `oauth.opaque_access_token` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc6749#section-1.4 |
+| `pem.ec_private_key` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc5915 |
+| `pem.encrypted_private_key` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7468#section-11 |
+| `pem.pkcs8_private_key` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7468#section-10 |
+| `pem.rsa_private_key` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc7468#section-11 |
+| `redis.connection_uri` | Open standard or specification | https://www.iana.org/assignments/uri-schemes/prov/redis |
+| `smtp.connection_uri` | Open standard or specification | https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1 |
+| `neg.digest_with_prefix` | Project's own repository | https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests |
+| `neg.image_digest_reference` | Project's own repository | https://github.com/opencontainers/distribution-spec/blob/main/spec.md |
+| `neg.nanoid` | Project's own repository | https://github.com/ai/nanoid |
+| `neg.ulid` | Project's own repository | https://github.com/ulid/spec |
+| `pem.openssh_private_key` | Project's own repository | https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.key |
+| `amqp.connection_uri` | Vendor documentation | https://www.rabbitmq.com/docs/uri-spec |
+| `anthropic.api_key` | Vendor documentation | https://docs.claude.com/en/api/getting-started |
+| `aws.access_key_id` | Vendor documentation | https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-prefixes |
+| `aws.secret_access_key` | Vendor documentation | https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html |
+| `azure.ad_client_secret` | Vendor documentation | https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app |
+| `azure.storage_account_key` | Vendor documentation | https://learn.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage |
+| `azure.storage_connection_string` | Vendor documentation | https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string |
+| `cookie.aspnet_auth` | Vendor documentation | https://learn.microsoft.com/en-us/aspnet/core/security/authentication/cookie |
+| `cookie.csrf_token` | Vendor documentation | https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery |
+| `cookie.laravel_session` | Vendor documentation | https://laravel.com/docs/12.x/session |
+| `datadog.api_key` | Vendor documentation | https://docs.datadoghq.com/account_management/api-app-keys/ |
+| `digitalocean.personal_access_token` | Vendor documentation | https://docs.digitalocean.com/reference/api/create-personal-access-token/ |
+| `gitlab.personal_access_token` | Vendor documentation | https://docs.gitlab.com/security/tokens/ |
+| `google.api_key` | Vendor documentation | https://cloud.google.com/docs/authentication/api-keys |
+| `hashicorp.vault_service_token` | Vendor documentation | https://developer.hashicorp.com/vault/docs/concepts/tokens |
+| `mongodb.srv_connection_string` | Vendor documentation | https://www.mongodb.com/docs/manual/reference/connection-string/ |
+| `mssql.connection_string` | Vendor documentation | https://learn.microsoft.com/en-us/sql/connect/ado-net/connection-string-syntax |
+| `mysql.connection_uri` | Vendor documentation | https://dev.mysql.com/doc/refman/8.4/en/connecting-using-uri-or-key-value-pairs.html |
+| `neg.assembly_version` | Vendor documentation | https://learn.microsoft.com/en-us/dotnet/api/system.version |
+| `neg.file_path_windows` | Vendor documentation | https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats |
+| `neg.git_commit_sha` | Vendor documentation | https://git-scm.com/docs/git-rev-parse#_specifying_revisions |
+| `npm.access_token` | Vendor documentation | https://docs.npmjs.com/about-access-tokens |
+| `nuget.api_key` | Vendor documentation | https://learn.microsoft.com/en-us/nuget/nuget-org/publish-a-package |
+| `oauth.google_refresh_token` | Vendor documentation | https://developers.google.com/identity/protocols/oauth2 |
+| `openai.api_key` | Vendor documentation | https://platform.openai.com/docs/api-reference/authentication |
+| `postgres.connection_uri` | Vendor documentation | https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING |
+| `pypi.upload_token` | Vendor documentation | https://pypi.org/help/#apitoken |
+| `sendgrid.api_key` | Vendor documentation | https://www.twilio.com/docs/sendgrid/ui/account-and-settings/api-keys |
+| `session.signed_value` | Vendor documentation | https://expressjs.com/en/resources/middleware/cookie-session.html |
+| `slack.bot_token` | Vendor documentation | https://api.slack.com/authentication/token-types |
+| `slack.webhook_url` | Vendor documentation | https://api.slack.com/messaging/webhooks |
+| `stripe.restricted_key` | Vendor documentation | https://docs.stripe.com/keys#limit-access |
+| `stripe.secret_key` | Vendor documentation | https://docs.stripe.com/keys |
+| `twilio.api_key_sid` | Vendor documentation | https://www.twilio.com/docs/iam/api-keys |
+| `twilio.auth_token` | Vendor documentation | https://www.twilio.com/docs/iam/api-keys |
+| `github.app_installation_token` | Vendor's own engineering blog | https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/ |
+| `github.pat_classic` | Vendor's own engineering blog | https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/ |
+| `github.pat_fine_grained` | Vendor's own engineering blog | https://github.blog/security/application-security/introducing-fine-grained-personal-access-tokens-for-github/ |
 
-### A.3 规则基线 `eval/baselines/rules.py` 的 27 条
+### A.2 The 27 rules in `eval/baselines/rules.py`
 
-| 规则 | 类别 | 出处 |
+| Rule | Class | Provenance |
 |---|---|---|
 | `aws.access_key_id` | `api_key` | gitleaks (MIT) — aws-access-token; the prefix set is gitleaks', not AWS documentation |
 | `github.token` | `api_key` | https://github.blog/engineering/platform-security/behind-githubs-new-authentication-token-formats/ |

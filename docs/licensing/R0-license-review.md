@@ -12,10 +12,10 @@ All URLs were checked on **2026-10-11**.
 **This file is an engineering record. It is not legal advice.**
 
 > **Decision, 2026-10-12, second and current (Frank, via the orchestrating
-> process).** **LogHub and SDLog are not used at all in v0.1** — neither for
+> process).** **LogHub (Zhu et al., n.d.) and SDLog (Mooselab, n.d.) are not used at all in v0.1** — neither for
 > training nor for evaluation. They are not downloaded. After the project is
 > published, their maintainers will be asked for permission, and the sources may
-> be added in a later version if it is granted. CredData remains in use for
+> be added in a later version if it is granted. CredData (Samsung, n.d.-a) remains in use for
 > **local evaluation only**. This is now recorded in plan §5.1 item 0 and
 > EXECUTION.md §8.
 >
@@ -46,11 +46,11 @@ All URLs were checked on **2026-10-11**.
 | 1 | CredData (Samsung) | Repo Apache-2.0; each data file under its originating project's license | Local evaluation only | Cite CredData; per-file notices only matter if redistributed, and we do not redistribute | Usable as planned |
 | 2 | SDLog annotated data (mooselab) | Repo MIT; data directory carries no separate statement; data is LogHub-derived | **Internal training only; not redistributed** (Frank, 2026-10-12) | Cite SDLog and LogHub | Decided; carries the LogHub risk — see #3 |
 | 3 | LogHub (logpai) | No SPDX license; terms of use state research/academic availability | **Internal training only; not redistributed** (Frank, 2026-10-12) | Cite the LogHub paper and link the repository | Decided by Frank against this review's recommendation; residual risk recorded below |
-| 4 | Laya weights (convaiinnovations/laya) | Apache-2.0 | Teacher labeling of synthetic and own samples | Keep the Apache-2.0 notice; name Laya in the model card | Usable as planned |
-| 5 | CredSweeper (Samsung) | MIT | Run as an evaluation control group | Reproduce the MIT notice if any of its code is vendored | Usable as planned |
-| 6 | gitleaks rules | MIT | Rule porting (patterns as reference) | Reproduce the MIT notice and attribute ported rules | Usable as planned |
-| 6 | detect-secrets rules (Yelp) | Apache-2.0 | Rule porting (patterns as reference) | NOTICE/attribution per Apache-2.0 §4 for ported material | Usable as planned |
-| 7 | StarPII (bigcode) | No license in the model card metadata; access is gated | **Excluded** | — | Excluded; see #7 |
+| 4 | Laya (Convai Innovations, n.d.) weights (convaiinnovations/laya) | Apache-2.0 | Teacher labeling of synthetic and own samples | Keep the Apache-2.0 notice; name Laya in the model card | Usable as planned |
+| 5 | CredSweeper (Samsung, n.d.-b) | MIT | Run as an evaluation control group | Reproduce the MIT notice if any of its code is vendored | Usable as planned |
+| 6 | gitleaks (Rice, n.d.) rules | MIT | Rule porting (patterns as reference) | Reproduce the MIT notice and attribute ported rules | Usable as planned |
+| 6 | detect-secrets rules (Yelp, n.d.) | Apache-2.0 | Rule porting (patterns as reference) | NOTICE/attribution per Apache-2.0 §4 for ported material | Usable as planned |
+| 7 | StarPII (BigCode, n.d.) | No license in the model card metadata; access is gated | **Excluded** | — | Excluded; see #7 |
 
 ---
 
@@ -255,3 +255,41 @@ rediscovering it. These are engineering consequences, not legal conclusions.
 Licenses change. Re-check every entry before each public release (NR-0006), and
 re-check any entry whose source is upgraded to a new version. Record the new
 verification date here rather than overwriting the old one.
+
+## References
+
+The works whose licences this review examines. Bibliographic details were
+checked against each source on 2026-10-16, as EXECUTION.md §9 item 3 requires;
+the licence texts themselves are quoted in the sections above with their own
+verification dates. Software and dataset entries give the version
+this project pins where one is pinned, and a retrieval date where the source is
+undated and subject to change, as APA 7th edition directs. Where a work carries
+no publication date, `n.d.` appears rather than a guess.
+
+Apache Software Foundation. (2004). *Apache license, version 2.0*.
+http://www.apache.org/licenses/LICENSE-2.0
+
+BigCode. (n.d.). *StarPII* [Model]. Hugging Face. Retrieved October 16, 2026,
+from https://huggingface.co/bigcode/starpii
+
+Convai Innovations. (n.d.). *Laya* [Model]. Hugging Face. Retrieved
+October 16, 2026, from https://huggingface.co/convaiinnovations/laya
+
+Mooselab. (n.d.). *SDLog* [Computer software]. GitHub. Retrieved October 16,
+2026, from https://github.com/mooselab/SDLog
+
+Rice, Z. (n.d.). *gitleaks* (Version 8.30.1) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/gitleaks/gitleaks
+
+Samsung. (n.d.-a). *CredData* [Data set]. GitHub. Retrieved October 16, 2026,
+from https://github.com/Samsung/CredData
+
+Samsung. (n.d.-b). *CredSweeper* (Version 1.19.2) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/Samsung/CredSweeper
+
+Yelp. (n.d.). *detect-secrets* [Computer software]. GitHub. Retrieved
+October 16, 2026, from https://github.com/Yelp/detect-secrets
+
+Zhu, J., He, S., Liu, J., He, P., Xie, Q., Zheng, Z., & Lyu, M. R. (n.d.).
+*LogHub* [Data set]. GitHub. Retrieved October 16, 2026, from
+https://github.com/logpai/loghub

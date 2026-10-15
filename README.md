@@ -58,9 +58,9 @@ end-to-end test proves the guard rejects a credential-shaped string the
 generator never produced.
 
 The released models are trained on synthetic data and nebuLog's own demo logs
-only. Of the third-party datasets, **CredData is used for local evaluation
+only. Of the third-party datasets, **CredData (Samsung, n.d.-a) is used for local evaluation
 only** — it never enters training, threshold selection or model choice — and
-**LogHub and SDLog are not used at all in this version**. No third-party data is
+**LogHub (Zhu et al., n.d.) and SDLog (Mooselab, n.d.) are not used at all in this version**. No third-party data is
 downloaded into the repository or redistributed; `corpus/` holds the acquisition
 scripts and processing recipes, never the data. Details and the licence wording
 each decision follows from are in
@@ -74,3 +74,39 @@ documentation are **MIT** licensed. See [LICENSE](LICENSE).
 Third-party data is not distributed with this repository. The sources it uses,
 their licences, what each is used for and the attribution owed are listed in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## References
+
+Sources named above. Bibliographic details were checked against each source on
+2026-10-16, as EXECUTION.md §9 item 3 requires. Software and dataset entries give the version
+this project pins where one is pinned, and a retrieval date where the source is
+undated and subject to change, as APA 7th edition directs. Where a work carries
+no publication date, `n.d.` appears rather than a guess.
+
+Apache Software Foundation. (2004). *Apache license, version 2.0*.
+http://www.apache.org/licenses/LICENSE-2.0
+
+BigCode. (n.d.). *StarPII* [Model]. Hugging Face. Retrieved October 16, 2026,
+from https://huggingface.co/bigcode/starpii
+
+Convai Innovations. (n.d.). *Laya* [Model]. Hugging Face. Retrieved
+October 16, 2026, from https://huggingface.co/convaiinnovations/laya
+
+Mooselab. (n.d.). *SDLog* [Computer software]. GitHub. Retrieved October 16,
+2026, from https://github.com/mooselab/SDLog
+
+Rice, Z. (n.d.). *gitleaks* (Version 8.30.1) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/gitleaks/gitleaks
+
+Samsung. (n.d.-a). *CredData* [Data set]. GitHub. Retrieved October 16, 2026,
+from https://github.com/Samsung/CredData
+
+Samsung. (n.d.-b). *CredSweeper* (Version 1.19.2) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/Samsung/CredSweeper
+
+Yelp. (n.d.). *detect-secrets* [Computer software]. GitHub. Retrieved
+October 16, 2026, from https://github.com/Yelp/detect-secrets
+
+Zhu, J., He, S., Liu, J., He, P., Xie, Q., Zheng, Z., & Lyu, M. R. (n.d.).
+*LogHub* [Data set]. GitHub. Retrieved October 16, 2026, from
+https://github.com/logpai/loghub

@@ -94,7 +94,7 @@ share is exact rather than sampled. Three carriers:
 - `template` (30%) — `Failed password for invalid user <*>`: the trap is in the
   surrounding message, and the attribute name is not involved at all.
 
-These exist because of a measured failure. In NR-0000 the Laya teacher model was
+These exist because of a measured failure. In NR-0000 the Laya (Convai Innovations, n.d.) teacher model was
 asked to classify ten samples; it labelled the *user name* in `Failed password
 for invalid user webmaster` as a password, with probability 0.972. It was reading
 the word "password" in the template, not the value. A 420-million-parameter
@@ -180,7 +180,7 @@ One JSON object per line; the schema is `datagen/schema/unit.schema.json`.
 5. **Not drawn from real logs at all.** That is a licensing and safety decision
    (plan §5.1), and it has a cost: whatever is distinctive about real log
    attributes and absent from the generator's imagination is absent here too.
-   CredData serves as the independent external test set precisely because of
+   CredData (Samsung, n.d.-a) serves as the independent external test set precisely because of
    this, and it is the only check on this limitation.
 6. **Vendor formats drift.** Each family reflects its vendor's documentation as
    of 2026-10-11. Formats change, and a stale family will train the model on a
@@ -203,3 +203,39 @@ Not intended: as a corpus of real credential patterns for threat research (the
 values are random); as a source of realistic base rates; or as a password
 wordlist (the password families are generated, and the placeholder list is a
 handful of generic defaults).
+
+## References
+
+The datasets and tools this card refers to. Bibliographic details were checked
+against each source on 2026-10-16, as EXECUTION.md §9 item 3 requires. Software and dataset entries give the version
+this project pins where one is pinned, and a retrieval date where the source is
+undated and subject to change, as APA 7th edition directs. Where a work carries
+no publication date, `n.d.` appears rather than a guess.
+
+Apache Software Foundation. (2004). *Apache license, version 2.0*.
+http://www.apache.org/licenses/LICENSE-2.0
+
+BigCode. (n.d.). *StarPII* [Model]. Hugging Face. Retrieved October 16, 2026,
+from https://huggingface.co/bigcode/starpii
+
+Convai Innovations. (n.d.). *Laya* [Model]. Hugging Face. Retrieved
+October 16, 2026, from https://huggingface.co/convaiinnovations/laya
+
+Mooselab. (n.d.). *SDLog* [Computer software]. GitHub. Retrieved October 16,
+2026, from https://github.com/mooselab/SDLog
+
+Rice, Z. (n.d.). *gitleaks* (Version 8.30.1) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/gitleaks/gitleaks
+
+Samsung. (n.d.-a). *CredData* [Data set]. GitHub. Retrieved October 16, 2026,
+from https://github.com/Samsung/CredData
+
+Samsung. (n.d.-b). *CredSweeper* (Version 1.19.2) [Computer software]. GitHub.
+Retrieved October 16, 2026, from https://github.com/Samsung/CredSweeper
+
+Yelp. (n.d.). *detect-secrets* [Computer software]. GitHub. Retrieved
+October 16, 2026, from https://github.com/Yelp/detect-secrets
+
+Zhu, J., He, S., Liu, J., He, P., Xie, Q., Zheng, Z., & Lyu, M. R. (n.d.).
+*LogHub* [Data set]. GitHub. Retrieved October 16, 2026, from
+https://github.com/logpai/loghub
