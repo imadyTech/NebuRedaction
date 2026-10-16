@@ -204,6 +204,10 @@ values are random); as a source of realistic base rates; or as a password
 wordlist (the password families are generated, and the placeholder list is a
 handful of generic defaults).
 
+## Vendor names
+
+**Vendor names.** Vendor names appearing in this document are used only to identify the credential formats they denote, as descriptive references to publicly published material; **this project is not affiliated with, sponsored by or endorsed by any of them.** Sources are cited in the reference list. See the *Trademarks* section of [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md).
+
 ## References
 
 The datasets and tools this card refers to. Bibliographic details were checked

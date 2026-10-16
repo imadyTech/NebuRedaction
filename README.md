@@ -66,6 +66,10 @@ scripts and processing recipes, never the data. Details and the licence wording
 each decision follows from are in
 [docs/licensing/R0-license-review.md](docs/licensing/R0-license-review.md).
 
+## Vendor names
+
+**Vendor names.** Vendor names appearing in this document are used only to identify the credential formats they denote, as descriptive references to publicly published material; **this project is not affiliated with, sponsored by or endorsed by any of them.** Sources are cited in the reference list. See the *Trademarks* section of [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## License
 
 The code, the synthetic dataset, the published model weights and the

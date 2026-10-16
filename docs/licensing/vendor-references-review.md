@@ -9,12 +9,21 @@ appear anywhere EXECUTION.md §9 says they should not.
 **Review only.** Findings are listed in §5 with the decision taken on each.
 Code was changed in exactly one place, F1, and only after that decision.
 
-**This document is exempt from EXECUTION.md §9 item 4 by its subject.** §9
-forbids using real vendors as examples in public-facing documentation; a review
-of vendor provenance cannot be written without naming vendors. It names them to
-audit them, not to illustrate anything. In-text citations follow APA 7th
-edition, as §9 item 1 requires of an English document, and the reference list is
-in §6.
+**Vendor names are used here as EXECUTION.md §9 item 4 permits**, and this
+paragraph is the declaration that item 4 requires: every vendor name, key name
+and format below is a **descriptive reference to publicly published material**,
+cited in §6, used to audit provenance rather than to illustrate anything.
+**This project is not affiliated with, sponsored by or endorsed by any vendor
+named.** No vendor's documentation text or sample code is reproduced in whole;
+had any been, §9 item 4 condition ④ would require disclosing it in
+`THIRD_PARTY_NOTICES.md`, where the two ported regular expressions already are.
+In-text citations follow APA 7th edition, as §9 item 1 requires of an English
+document.
+
+An earlier draft of this paragraph claimed an *exemption* from §9 item 4 on the
+grounds that it forbade naming vendors. That was written against a superseded
+text: item 4 withdrew the prohibition on 2026-10-15 and was widened again on
+2026-10-16. No exemption is needed, and claiming one misdescribed the rule.
 
 | | |
 |---|---|
@@ -265,8 +274,26 @@ elsewhere. All three are now produced by the generator at test time, and
 detection is verified against planted values, because a guard that silently
 matches nothing passes forever.
 
-**Still open:** whether §9 applies retroactively to the prose in
-`baseline-v0.md` and `data-card-synth.md`.
+**Closed** (Frank, 2026-10-16). Two things settled it. First, §9 item 4 no
+longer forbids what this finding flagged: as revised on 2026-10-15 and widened
+on 2026-10-16, vendor names, key names, public formats, example code snippets
+and example values may all be used as descriptive references to published
+material, subject to five conditions — citation, text names only, a
+no-affiliation statement in the README and the data card, disclosure in
+`THIRD_PARTY_NOTICES.md` of any *complete* use of vendor code or prose, and
+prompt removal on a rights-holder's objection. Second, Frank reviewed
+`baseline-v0.md` and `docs/data-card-synth.md` directly and found no problem in
+them.
+
+The one thing this finding did produce is now done independently: condition ③'s
+no-affiliation sentence was absent from both the README and the data card, and
+has been added to each.
+
+**This finding was, in part, my error.** I re-read NR-0008 before this work but
+not EXECUTION.md, so F4 was raised against a §9 item 4 that had already been
+withdrawn the day before. The three copied *values* under F4 were a real
+finding; the paragraph about vendor names in prose was litigating a rule that
+no longer existed.
 
 ### F5 — the evaluation slices are vendor-named — closed without a pause (Frank, 2026-10-15)
 
