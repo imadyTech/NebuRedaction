@@ -8,9 +8,11 @@ gets a teacher opinion, so the tier is a decision about what goes unchecked.
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 
 import pytest
+from datagen.families import REGISTRY
 from datagen.loader import ThirdPartyDataError
 from datagen.unit import DetectionUnit
 from labeling.rules import (
@@ -25,6 +27,30 @@ from labeling.rules import (
     write_labels,
 )
 from labeling.rules.__main__ import DEFAULT_CORPORA, run
+
+#: Seed for the values generated below. Fixed so a failure is reproducible.
+_SEED = 20261016
+
+
+def generated(family: str, seed: int = _SEED) -> str:
+    """Produce a credential-shaped value from the generator, at test time.
+
+    Args:
+        family: A registered format family, such as ``aws.secret_access_key``.
+        seed: Seed for this value.
+
+    Returns:
+        The generated value.
+
+    **Not a literal.** EXECUTION.md §5 item 3 forbids vendor-shaped credential
+    strings anywhere in the repository, source literals included, and these
+    tests previously carried two values copied verbatim from a vendor's own
+    documentation (NR-0008 §2.0 finding F4). Generating them keeps the test
+    exercising a real format while committing nothing that looks like a
+    credential — the same trade `tests/datagen/conftest.py` already makes for
+    the fixture corpus.
+    """
+    return REGISTRY[family].generate(random.Random(seed))
 
 
 def unit(key: str, value: str, **extra: object) -> DetectionUnit:
@@ -58,7 +84,7 @@ def test_a_structureless_secret_is_low_confidence() -> None:
     because nothing structural can settle it. Only the key name labels it, and
     only weakly.
     """
-    label = label_unit(unit("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLE"))
+    label = label_unit(unit("AWS_SECRET_ACCESS_KEY", generated("aws.secret_access_key")))
     assert label.confidence == LOW
     assert label.evidence == "key:api_key"
 
@@ -183,7 +209,7 @@ def test_no_value_is_ever_written_to_a_label_file(tmp_path: Path) -> None:
     The same labeller runs over the own logs, and a label file that embedded
     values would inherit every constraint the corpus has.
     """
-    secret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    secret = generated("aws.secret_access_key", seed=_SEED + 1)
     path = tmp_path / "labels.jsonl"
     write_labels(label_units([unit("AWS_SECRET_ACCESS_KEY", secret)]), path)
     written = path.read_text(encoding="utf-8")

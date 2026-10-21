@@ -18,6 +18,14 @@ dotnet/BenchmarkDotNet.Artifacts/
 # Windows and Linux — would be covered on neither.
 !tests/fixtures/fixture-model-v1.nrm
 
+# The release model, committed on Frank's decision of 2026-10-22, which lifted
+# the "not in version control until final verification" condition of NR-0005 §7.
+# It is embedded in the NuGet package, so `dotnet pack` must be reproducible
+# from a clean checkout; keeping the weights out while shipping them in the
+# package would mean the published artefact could not be rebuilt from source.
+# 95 KB of float32 leaves and int16 node indices — no credential strings.
+!models/neburedaction-v0.1.0.nrm
+
 # --- credential-shaped test fixtures ---
 #
 # The generator produces format-correct vendor credentials on purpose, so a

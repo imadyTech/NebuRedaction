@@ -7,8 +7,10 @@
     <PackageId>imady.NebuRedaction</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
-    <Description>Experimental offline secret-credential classifier for structured log attributes. Not recommended for production: accuracy gate G2 is not met (0.804 recall at a 0.1% false-positive rate against a 0.834 bar), and the false-positive rate is several times its target on log formats it was not trained on. Defence in depth only. No model weights are bundled.</Description>
+    <Description>Experimental offline secret-credential classifier for structured log attributes. Not recommended for production: accuracy gate G2 is not met (0.804 recall at a 0.1% false-positive rate against a 0.834 bar), and the false-positive rate is several times its target on log formats it was not trained on. Defence in depth only. Embeds the v0.1.0 default model; no runtime dependencies.</Description>
     <PackageTags>logging;redaction;secrets;credentials;privacy;machine-learning</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>First preview. Experimental: accuracy gate G2 is not met and the model generalises poorly to log formats it was not trained on — see docs/reports/v0.1-technical-report.md. Embeds the v0.1.0 default model (95 KB); zero runtime dependencies.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +19,34 @@
          Hashed() is exactly what has to be proved rather than assumed, so the
          tests need to reach both. -->
     <InternalsVisibleTo Include="imady.NebuRedaction.Tests" />
+  </ItemGroup>
+
+  <!-- The default model, embedded so that SecretDetector.Default works from the
+       published package (NR-0005 §2.2 item 3). The weights are NOT in version
+       control, so a build from a source checkout simply has no resource and
+       Default reports that clearly. Packing, however, must never silently
+       produce a package whose Default throws: the target below fails the pack
+       instead. -->
+  <PropertyGroup>
+    <DefaultModelPath>$(MSBuildThisFileDirectory)../../../models/neburedaction-v0.1.0.nrm</DefaultModelPath>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(DefaultModelPath)')">
+    <EmbeddedResource Include="$(DefaultModelPath)" LogicalName="imady.NebuRedaction.default.nrm" />
+  </ItemGroup>
+
+  <Target Name="RefuseToPackWithoutTheModel" BeforeTargets="GenerateNuspec">
+    <Error Condition="!Exists('$(DefaultModelPath)')"
+           Text="Refusing to pack: $(DefaultModelPath) is missing, so SecretDetector.Default would throw for every consumer of this package. Export the model (training/export_nrm.py) before packing, or pack deliberately without it by removing this target." />
+  </Target>
+
+  <!-- Files the release is required to carry inside the package (NR-0006 §2
+       item 6). PackageLicenseExpression declares the licence; it does not put
+       these in the package. -->
+  <ItemGroup>
+    <None Include="../../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="../../../THIRD_PARTY_NOTICES.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

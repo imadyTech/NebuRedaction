@@ -14,7 +14,32 @@ why the use was judged acceptable — is in
 [docs/licensing/R0-license-review.md](docs/licensing/R0-license-review.md). This
 file states the conclusions; that file argues them.
 
-Verified 2026-10-11, decisions updated 2026-10-12.
+Verified 2026-10-11, decisions updated 2026-10-12; trademark notice added
+2026-10-16.
+
+---
+
+## Trademarks
+
+Third-party product, service and company names appearing in this project —
+whether in source code, format-family identifiers such as
+`aws.access_key_id`, documentation, or evaluation results — are the trademarks
+of their respective owners. They are used **nominatively**, to identify the
+credential format each name denotes, because no other way of saying "the format
+this vendor issues" exists. **No affiliation, sponsorship or endorsement is
+claimed or implied, and no vendor has reviewed, approved or supported this
+project.**
+
+What the project takes from those vendors is their **published factual format
+descriptions** — a prefix, a length, an alphabet — which it reimplements rather
+than copies; each format family cites the document it was derived from, and the
+derivation is recorded in
+[docs/licensing/vendor-references-review.md](docs/licensing/vendor-references-review.md).
+Two regular expressions are genuine ports and are attributed below under
+*gitleaks*. No vendor documentation text, sample code, or published example
+value is reproduced in this repository, and a test
+(`tests/test_no_vendor_examples.py`) enforces the last of those, because the
+secret scanner deliberately ignores it.
 
 ---
 

@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace imady.NebuRedaction;
 
@@ -162,6 +164,49 @@ public sealed class SecretDetector
 
     /// <summary>Selected metadata from the loaded model file.</summary>
     public IReadOnlyDictionary<string, string> ModelMetadata => _model.Metadata;
+
+    /// <summary>The name the default model is embedded under.</summary>
+    private const string EmbeddedModelName = "imady.NebuRedaction.default.nrm";
+
+    private static readonly Lazy<SecretDetector> LazyDefault =
+        new(() => LoadDefault(), LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>The detector built from the model embedded in this package.</summary>
+    /// <exception cref="NrmException">
+    /// If this build carries no embedded model. A build made without the weight
+    /// file present produces a library whose <see cref="Load(string,
+    /// SecretDetectorOptions)"/> still works and whose <c>Default</c> does not,
+    /// and the message says so rather than failing as a missing resource.
+    /// </exception>
+    /// <remarks>
+    /// Loaded once, on first use, and shared: parsing the model allocates the
+    /// trees and the bucket map, and an instance is read-only afterwards and
+    /// safe across threads. A caller who wants different options should use
+    /// <see cref="LoadDefault"/>, which parses a fresh instance rather than
+    /// mutating this one.
+    /// </remarks>
+    public static SecretDetector Default => LazyDefault.Value;
+
+    /// <summary>Loads the embedded default model with the given options.</summary>
+    /// <param name="options">Runtime options; defaults to the balanced profile.</param>
+    /// <returns>A new detector over the embedded model.</returns>
+    /// <exception cref="NrmException">If this build carries no embedded model.</exception>
+    public static SecretDetector LoadDefault(SecretDetectorOptions? options = null)
+    {
+        using Stream? stream = typeof(SecretDetector).Assembly
+            .GetManifestResourceStream(EmbeddedModelName);
+        if (stream is null)
+        {
+            throw new NrmException(
+                "this build of imady.NebuRedaction carries no embedded model, so "
+                    + "SecretDetector.Default is unavailable. The published package embeds "
+                    + "one; a build made from a source checkout does not, because the "
+                    + "weights are not in version control. Use Load(path) with a .nrm file "
+                    + "instead.");
+        }
+
+        return Load(stream, options);
+    }
 
     /// <summary>Loads a detector from a <c>.nrm</c> file.</summary>
     /// <param name="path">Path to the file.</param>
