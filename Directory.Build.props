@@ -23,6 +23,14 @@
     <RepositoryUrl>https://github.com/imadyTech/NebuRedaction</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <VersionPrefix>0.1.0</VersionPrefix>
+
+    <!-- SourceLink and a symbol package, so a consumer can step into the
+         library. SourceLink ships in the SDK from .NET 8, so no package
+         reference is needed; these four properties are what switch it on. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
 </Project>

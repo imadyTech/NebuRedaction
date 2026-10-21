@@ -206,6 +206,68 @@ public class SecretDetectorTests
     }
 
     [Fact]
+    public void TheEmbeddedDefaultModelLoadsAndAgreesWithTheFileOnDisk()
+    {
+        // NR-0005 §2.2 item 3 asked for `Default`; it could not be written until
+        // the weights were embedded, which NR-0006 settled on 2026-10-22. What
+        // matters is not only that it loads but that it is the *same* model the
+        // consistency gate was measured on — an embedded resource that drifted
+        // from the exported file would pass every other test here.
+        string onDisk = FeatureVectorTests.RepositoryFile("models/neburedaction-v0.1.0.nrm");
+        if (!File.Exists(onDisk))
+        {
+            Assert.Skip("the release model is not in this checkout, so Default has no resource");
+        }
+
+        SecretDetector embedded = SecretDetector.Default;
+        SecretDetector fromFile = SecretDetector.Load(onDisk);
+
+        Assert.Equal(fromFile.Labels, embedded.Labels);
+        Assert.Equal(fromFile.Threshold, embedded.Threshold, 12);
+        Assert.Equal(fromFile.ModelMetadata["feature_version"], embedded.ModelMetadata["feature_version"]);
+
+        foreach ((string key, string value) in new[]
+        {
+            ("OrderId", "29"),
+            ("digest", "9f86d081884c7d659a2feaa0c55ad015"),
+            ("payload", new string('x', 300)),
+        })
+        {
+            Assert.Equal(
+                fromFile.Classify(key, value).Probabilities,
+                embedded.Classify(key, value).Probabilities);
+        }
+    }
+
+    [Fact]
+    public void DefaultIsASingleSharedInstance()
+    {
+        // Parsing the model allocates the trees and the bucket map; re-parsing it
+        // per call would be a surprising cost behind a property.
+        if (!File.Exists(FeatureVectorTests.RepositoryFile("models/neburedaction-v0.1.0.nrm")))
+        {
+            Assert.Skip("the release model is not in this checkout");
+        }
+
+        Assert.Same(SecretDetector.Default, SecretDetector.Default);
+    }
+
+    [Fact]
+    public void LoadDefaultHonoursOptionsWithoutMutatingDefault()
+    {
+        if (!File.Exists(FeatureVectorTests.RepositoryFile("models/neburedaction-v0.1.0.nrm")))
+        {
+            Assert.Skip("the release model is not in this checkout");
+        }
+
+        SecretDetector strict = SecretDetector.LoadDefault(
+            new SecretDetectorOptions { Profile = RedactionProfile.Conservative });
+
+        Assert.True(strict.Threshold >= SecretDetector.Default.Threshold);
+        Assert.NotSame(SecretDetector.Default, strict);
+    }
+
+    [Fact]
     public void NullArgumentsAreRefused()
     {
         SecretDetector detector = Detector();
